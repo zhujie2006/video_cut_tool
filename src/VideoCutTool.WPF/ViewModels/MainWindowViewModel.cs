@@ -6,6 +6,7 @@ using System.IO;
 using System.Windows.Threading;
 using VideoCutTool.WPF.Models;
 using VideoCutTool.WPF.Services;
+using VideoCutTool.WPF.Views;
 using Serilog;
 
 namespace VideoCutTool.WPF.ViewModels
@@ -14,14 +15,16 @@ namespace VideoCutTool.WPF.ViewModels
     {
         private readonly IVideoService _videoService;
         private readonly IFileDialogService _fileDialogService;
+        private readonly IProjectService _projectService;
         private readonly Stack<Action> _undoStack = new();
         private readonly Stack<Action> _redoStack = new();
         private readonly ILogger _logger;
         
-        public MainWindowViewModel(IVideoService videoService, IFileDialogService fileDialogService)
+        public MainWindowViewModel(IVideoService videoService, IFileDialogService fileDialogService, IProjectService projectService)
         {
             _videoService = videoService;
             _fileDialogService = fileDialogService;
+            _projectService = projectService;
             _logger = Log.ForContext<MainWindowViewModel>();
             
             _logger.Information("MainWindowViewModel 初始化开始");
@@ -108,6 +111,9 @@ namespace VideoCutTool.WPF.ViewModels
 
         [ObservableProperty]
         private bool _isPlaying = false;
+
+        [ObservableProperty]
+        private TimelineSegment? _selectedSegment;
 
         // Commands
         [RelayCommand]
@@ -436,10 +442,151 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         [RelayCommand]
-        private void SaveProject()
+        private async Task SaveProjectAsync()
         {
-            StatusMessage = "保存项目功能待实现";
-            // TODO: 实现保存项目功能
+            _logger.Information("开始保存项目");
+            
+            if (VideoInfo == null)
+            {
+                _logger.Warning("尝试保存项目但未导入视频");
+                StatusMessage = "请先导入视频";
+                return;
+            }
+            
+            try
+            {
+                // 选择保存路径
+                var filePath = _fileDialogService.SaveProjectFile();
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    _logger.Information("用户取消保存项目");
+                    StatusMessage = "未选择保存路径";
+                    return;
+                }
+                
+                _logger.Information("选择保存路径: {FilePath}", filePath);
+                
+                StatusMessage = "正在保存项目...";
+                
+                // 创建项目文件
+                var project = new ProjectFile
+                {
+                    Name = ProjectInfo.Name,
+                    VideoInfo = VideoInfo,
+                    VideoSource = VideoSource ?? string.Empty,
+                    TimelineSegments = TimelineSegments.ToList(),
+                    CurrentTime = CurrentTime,
+                    Volume = Volume,
+                    ExportSettings = new ExportSettings
+                    {
+                        Format = SelectedExportFormat,
+                        Quality = SelectedExportQuality,
+                        FrameRate = SelectedFrameRate
+                    }
+                };
+                
+                var success = await _projectService.SaveProjectAsync(project, filePath);
+                
+                if (success)
+                {
+                    _logger.Information("项目保存成功: {FilePath}", filePath);
+                    StatusMessage = $"项目已保存: {Path.GetFileName(filePath)}";
+                }
+                else
+                {
+                    _logger.Error("项目保存失败: {FilePath}", filePath);
+                    StatusMessage = "项目保存失败";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "保存项目过程中发生异常");
+                StatusMessage = $"保存失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private async Task LoadProjectAsync()
+        {
+            _logger.Information("开始加载项目");
+            
+            try
+            {
+                // 选择项目文件
+                var filePath = _fileDialogService.OpenProjectFile();
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    _logger.Information("用户取消加载项目");
+                    StatusMessage = "未选择项目文件";
+                    return;
+                }
+                
+                _logger.Information("选择项目文件: {FilePath}", filePath);
+                
+                StatusMessage = "正在加载项目...";
+                
+                var project = await _projectService.LoadProjectAsync(filePath);
+                if (project == null)
+                {
+                    _logger.Error("项目文件加载失败: {FilePath}", filePath);
+                    StatusMessage = "项目文件加载失败";
+                    return;
+                }
+                
+                // 验证视频文件是否存在
+                if (!string.IsNullOrEmpty(project.VideoSource) && !File.Exists(project.VideoSource))
+                {
+                    _logger.Warning("项目中的视频文件不存在: {VideoSource}", project.VideoSource);
+                    StatusMessage = "项目中的视频文件不存在，请重新选择";
+                    
+                    // 让用户重新选择视频文件
+                    var newVideoPath = _fileDialogService.SelectVideoFile();
+                    if (!string.IsNullOrEmpty(newVideoPath))
+                    {
+                        project.VideoSource = newVideoPath;
+                        if (project.VideoInfo != null)
+                        {
+                            project.VideoInfo.FilePath = newVideoPath;
+                        }
+                    }
+                    else
+                    {
+                        StatusMessage = "未选择视频文件，项目加载取消";
+                        return;
+                    }
+                }
+                
+                // 加载项目数据
+                VideoInfo = project.VideoInfo;
+                VideoSource = project.VideoSource;
+                CurrentTime = project.CurrentTime;
+                Volume = project.Volume;
+                
+                TimelineSegments.Clear();
+                foreach (var segment in project.TimelineSegments)
+                {
+                    TimelineSegments.Add(segment);
+                }
+                
+                // 更新导出设置
+                if (project.ExportSettings != null)
+                {
+                    SelectedExportFormat = project.ExportSettings.Format;
+                    SelectedExportQuality = project.ExportSettings.Quality;
+                    SelectedFrameRate = project.ExportSettings.FrameRate;
+                }
+                
+                // 更新项目信息
+                UpdateProjectInfo();
+                
+                _logger.Information("项目加载成功: {FilePath}", filePath);
+                StatusMessage = $"项目已加载: {Path.GetFileName(filePath)}";
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "加载项目过程中发生异常");
+                StatusMessage = $"加载失败: {ex.Message}";
+            }
         }
 
         [RelayCommand]
@@ -559,8 +706,52 @@ namespace VideoCutTool.WPF.ViewModels
         [RelayCommand]
         private void AdvancedSettings()
         {
-            StatusMessage = "高级设置功能待实现";
-            // TODO: 实现高级设置功能
+            _logger.Information("打开高级设置对话框");
+            
+            try
+            {
+                var settings = new ExportSettings
+                {
+                    Format = SelectedExportFormat,
+                    Quality = SelectedExportQuality,
+                    FrameRate = SelectedFrameRate,
+                    VideoCodec = "h264",
+                    AudioCodec = "aac",
+                    Bitrate = 5000,
+                    AudioEnabled = true
+                };
+                
+                var advancedSettingsViewModel = new AdvancedSettingsViewModel(settings);
+                var advancedSettingsWindow = new AdvancedSettingsWindow
+                {
+                    DataContext = advancedSettingsViewModel,
+                    Owner = System.Windows.Application.Current.MainWindow
+                };
+                
+                var result = advancedSettingsWindow.ShowDialog();
+                if (result == true)
+                {
+                    var updatedSettings = advancedSettingsViewModel.GetUpdatedSettings();
+                    
+                    // 更新导出设置
+                    SelectedExportFormat = updatedSettings.Format;
+                    SelectedExportQuality = updatedSettings.Quality;
+                    SelectedFrameRate = updatedSettings.FrameRate;
+                    
+                    _logger.Information("高级设置已保存");
+                    StatusMessage = "高级设置已更新";
+                }
+                else
+                {
+                    _logger.Information("高级设置对话框已取消");
+                    StatusMessage = "高级设置未更改";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "打开高级设置对话框时发生异常");
+                StatusMessage = $"高级设置错误: {ex.Message}";
+            }
         }
         
         [RelayCommand]
@@ -570,6 +761,45 @@ namespace VideoCutTool.WPF.ViewModels
             {
                 _fileDialogService.OpenFileInExplorer(filePath);
             }
+        }
+
+        [RelayCommand]
+        private void SelectSegment(TimelineSegment segment)
+        {
+            _logger.Information("选择片段: {SegmentName}", segment.Name);
+            
+            // 清除之前的选择
+            foreach (var seg in TimelineSegments)
+            {
+                seg.IsSelected = false;
+            }
+            
+            // 设置新的选择
+            segment.IsSelected = true;
+            SelectedSegment = segment;
+            
+            // 跳转到片段开始时间
+            CurrentTime = segment.StartTime;
+            
+            UpdateCommandStates();
+            StatusMessage = $"已选择片段: {segment.Name}";
+        }
+
+        [RelayCommand]
+        private void PlaySegment(TimelineSegment segment)
+        {
+            _logger.Information("播放片段: {SegmentName}", segment.Name);
+            
+            // 选择并播放片段
+            SelectSegment(segment);
+            
+            // 开始播放
+            if (!IsPlaying)
+            {
+                PlayPause();
+            }
+            
+            StatusMessage = $"播放片段: {segment.Name}";
         }
 
         partial void OnCurrentPositionChanged(double value)

@@ -21,5 +21,15 @@ namespace VideoCutTool.WPF.Services
         /// 打开文件资源管理器并选中文件
         /// </summary>
         void OpenFileInExplorer(string filePath);
+        
+        /// <summary>
+        /// 保存项目文件
+        /// </summary>
+        string? SaveProjectFile();
+        
+        /// <summary>
+        /// 打开项目文件
+        /// </summary>
+        string? OpenProjectFile();
     }
 } 

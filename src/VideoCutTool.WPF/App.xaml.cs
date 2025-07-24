@@ -65,6 +65,7 @@ namespace VideoCutTool.WPF
             // Register services
             services.AddSingleton<IVideoService, VideoService>();
             services.AddSingleton<IFileDialogService, FileDialogService>();
+            services.AddSingleton<IProjectService, ProjectService>();
 
             // Register ViewModels
             services.AddTransient<MainWindowViewModel>();

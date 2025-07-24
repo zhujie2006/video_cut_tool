@@ -99,11 +99,17 @@
         <!-- 分隔线颜色 -->
         <SolidColorBrush x:Key="SeparatorBrush" Color="#364153" />
         
+        <!-- 选中背景颜色 -->
+        <SolidColorBrush x:Key="SelectedBackgroundBrush" Color="#2D5A2D" />
+        
         <!-- 转换器 -->
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         
         <!-- 音量转换器 -->
         <local:VolumeConverter x:Key="VolumeConverter" />
+        
+        <!-- 选中背景转换器 -->
+        <local:SelectedBackgroundConverter x:Key="SelectedBackgroundConverter" />
         
         <!-- 调整大小边框样式 -->
         <Style x:Key="ResizeBorderStyle" TargetType="Border">
@@ -152,6 +158,8 @@
                 <StackPanel>
                     <Button Content="导入视频" Margin="4" Padding="12,8" MinWidth="80" Command="{Binding ImportVideoCommand}"
                             Background="{StaticResource PrimaryButtonBrush}" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <Button Content="加载项目" Margin="4" Padding="12,8" MinWidth="80" Command="{Binding LoadProjectCommand}"
+                            Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}" />
                     <!-- 编辑工具 -->
                     <TextBlock Text="编辑工具" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
                     <StackPanel Margin="0,0,0,16">
@@ -208,6 +216,42 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
+
+                    <!-- 时间轴片段列表 -->
+                    <TextBlock Text="时间轴片段" FontSize="14" FontWeight="Medium" Margin="0,16,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16">
+                        <ItemsControl ItemsSource="{Binding TimelineSegments}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,2" Padding="8" Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}" 
+                                            BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="1" CornerRadius="4"
+                                            MouseLeftButtonDown="TimelineSegment_MouseLeftButtonDown">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium" 
+                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                <TextBlock Text="{Binding StartTime, StringFormat='开始: {0:mm\\:ss}'}" 
+                                                           FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" />
+                                                <TextBlock Text="{Binding Duration, StringFormat='时长: {0:mm\\:ss}'}" 
+                                                           FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Style="{StaticResource PlayControlButtonStyle}" Width="24" Height="24" Margin="2,0"
+                                                        Command="{Binding DataContext.PlaySegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}">
+                                                    <materialDesign:PackIcon Kind="Play" Width="12" Height="12" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
 
                     <!-- 快捷键 -->
                     <TextBlock Text="快捷键" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
@@ -395,8 +439,24 @@
 
         <!-- 时间轴 -->
         <materialDesign:Card Grid.Row="2" Margin="4" Padding="12" Style="{StaticResource CustomCardStyle}" x:Name="TimelineCard">
-            <!-- 时间轴控件 -->
-            <controls:TimelineControl x:Name="TimelineControl" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                
+                <!-- 时间轴工具栏 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="时间轴片段" FontSize="14" FontWeight="Medium" 
+                               Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding TimelineSegments.Count, StringFormat=' ({0})'}" 
+                               FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" 
+                               VerticalAlignment="Center" Margin="4,0,0,0" />
+                </StackPanel>
+                
+                <!-- 时间轴控件 -->
+                <controls:TimelineControl Grid.Row="1" x:Name="TimelineControl" />
+            </Grid>
         </materialDesign:Card>
 
         <!-- 底部状态栏 -->

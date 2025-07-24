@@ -69,5 +69,40 @@ namespace VideoCutTool.WPF.Services
                 Process.Start("explorer.exe", $"\"{filePath}\"");
             }
         }
+        
+        public string? SaveProjectFile()
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Title = "保存项目文件",
+                Filter = "视频剪辑项目文件|*.vct|所有文件|*.*",
+                DefaultExt = "vct",
+                FileName = "新项目.vct"
+            };
+            
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                return saveFileDialog.FileName;
+            }
+            
+            return null;
+        }
+        
+        public string? OpenProjectFile()
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Title = "打开项目文件",
+                Filter = "视频剪辑项目文件|*.vct|所有文件|*.*",
+                Multiselect = false
+            };
+            
+            if (openFileDialog.ShowDialog() == true)
+            {
+                return openFileDialog.FileName;
+            }
+            
+            return null;
+        }
     }
 } 

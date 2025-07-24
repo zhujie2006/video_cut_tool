@@ -207,6 +207,25 @@ namespace VideoCutTool.WPF.Views
         }
 
         #endregion
+
+        #region 时间轴片段事件处理
+
+        /// <summary>
+        /// 时间轴片段点击事件
+        /// </summary>
+        private void TimelineSegment_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.DataContext is TimelineSegment segment)
+            {
+                if (DataContext is MainWindowViewModel viewModel)
+                {
+                    viewModel.SelectSegmentCommand.Execute(segment);
+                }
+                e.Handled = true;
+            }
+        }
+
+        #endregion
         
     }
 }

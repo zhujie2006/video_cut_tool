@@ -1,14 +1,30 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace VideoCutTool.WPF.Models
 {
-    public class TimelineSegment
+    public partial class TimelineSegment : ObservableObject
     {
-        public string Name { get; set; } = string.Empty;
-        public TimeSpan StartTime { get; set; }
-        public TimeSpan EndTime { get; set; }
+        [ObservableProperty]
+        private string _name = string.Empty;
+        
+        [ObservableProperty]
+        private TimeSpan _startTime;
+        
+        [ObservableProperty]
+        private TimeSpan _endTime;
+        
+        [ObservableProperty]
+        private string _thumbnailPath = string.Empty;
+        
+        [ObservableProperty]
+        private bool _isSelected;
+        
+        [ObservableProperty]
+        private bool _isDeleted;
+        
+        [ObservableProperty]
+        private DateTime _createdDate = DateTime.Now;
+        
         public TimeSpan Duration => EndTime - StartTime;
-        public string ThumbnailPath { get; set; } = string.Empty;
-        public bool IsSelected { get; set; }
-        public bool IsDeleted { get; set; }
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
     }
 } 
