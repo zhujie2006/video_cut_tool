@@ -203,17 +203,23 @@
                 
                 <!-- 视频缩略图轨道 -->
                 <Grid Grid.Row="1" x:Name="VideoTrackContainer" VerticalAlignment="Center">
-                    <Canvas x:Name="VideoTrackCanvas" Background="Transparent" Height="80">
+                    <Canvas x:Name="VideoTrackCanvas" Background="Transparent" Height="{Binding ElementName=VideoTrackContainer, Path=ActualHeight}">
                         <!-- 缩略图会在这里动态生成 -->
                     </Canvas>
                 </Grid>
                 
                 <!-- 音频波形轨道 -->
-                <Border Grid.Row="2" x:Name="AudioTrackContainer">
-                    <Canvas x:Name="AudioTrackCanvas" Background="Transparent">
+                <Border Grid.Row="2" x:Name="AudioTrackContainer" Height="40" VerticalAlignment="Top">
+                    <Canvas x:Name="AudioTrackCanvas" Background="Transparent" Height="{Binding ElementName=AudioTrackContainer, Path=ActualHeight}">
                         <!-- 音频波形会在这里动态生成 -->
                     </Canvas>
                 </Border>
+
+                <!-- 切分点集合 - 覆盖在所有轨道上方 -->
+                <!--Canvas x:Name="SplitPointsCanvas" Grid.RowSpan="3" 
+                        Background="Transparent"-->
+                    <!-- 切分点会在这里动态生成 -->
+                <!--/Canvas-->
 
                 <!-- 播放头 - 覆盖在所有轨道上方 -->
                 <Canvas x:Name="PlayheadCanvas" Grid.RowSpan="3" 
@@ -226,17 +232,10 @@
                           Stroke="#FFD700" StrokeThickness="3" 
                           X1="0" X2="0" Y1="0" Y2="{Binding ElementName=TimelineGrid,Path=ActualHeight}" />
                     <!-- 播放头顶部块 -->
-                    <Border x:Name="PlayheadTopBlock" Canvas.Top="0" Width="12" Height="8" 
+                    <Border x:Name="PlayheadTopBlock" Canvas.Top="0" Canvas.Left="-6" Width="12" Height="8" 
                             Background="#FFD700" CornerRadius="2" 
                             HorizontalAlignment="Center" />
                 </Canvas>
-                
-                <!-- 切分点集合 - 覆盖在所有轨道上方 -->
-                <Canvas x:Name="SplitPointsCanvas" Grid.RowSpan="3" 
-                        Background="Transparent">
-                    <!-- 切分点会在这里动态生成 -->
-                </Canvas>
-                
             </Grid>
         </ScrollViewer>
     </Grid>

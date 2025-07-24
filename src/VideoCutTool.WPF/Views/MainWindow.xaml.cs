@@ -46,6 +46,13 @@ namespace VideoCutTool.WPF.Views
         {
             if (DataContext is MainWindowViewModel viewModel && VideoPlayer.Source != null)
             {
+                // 检查TimelineControl是否正在拖拽
+                if (TimelineControl.IsDraggingPlayhead)
+                {
+                    // 如果正在拖拽，暂停定时器更新
+                    return;
+                }
+                
                 // 同步MediaElement的位置到ViewModel
                 var oldTime = viewModel.CurrentTime;
                 var newTime = VideoPlayer.Position;

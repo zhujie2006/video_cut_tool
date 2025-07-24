@@ -18,7 +18,7 @@ namespace VideoCutTool.WPF.ViewModels
         
         // 时间轴配置
         private const double PIXELS_PER_SECOND = 4.6; // 4.6像素/秒，1分钟=276像素
-        private const double THUMBNAIL_WIDTH = 50.0; // 缩略图固定宽度
+        public static double THUMBNAIL_WIDTH = 64.0; // 缩略图固定宽度
         
         // 视频信息
         private VideoInfo? _currentVideo;

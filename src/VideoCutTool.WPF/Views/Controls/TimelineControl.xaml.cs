@@ -33,6 +33,9 @@ namespace VideoCutTool.WPF.Views.Controls
         private Point _dragStartPoint;
         private double _dragStartX;
         
+        // 公共属性，用于外部检查拖拽状态
+        public bool IsDraggingPlayhead => _isDraggingPlayhead;
+        
         // 事件
         public event Action<TimeSpan>? PlayheadPositionChanged;
         public event Action<TimeSpan>? SplitPointRequested;
@@ -220,9 +223,10 @@ namespace VideoCutTool.WPF.Views.Controls
                 return;
             }
             
+            
             var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
-            var thumbnailWidth = 50.0; // 固定缩略图宽度
-            var thumbnailHeight = 30.0;
+            var thumbnailWidth = TimelineControlViewModel.THUMBNAIL_WIDTH; // 固定缩略图宽度
+            var thumbnailHeight = (TimelineControlViewModel.THUMBNAIL_WIDTH / _viewModel.CurrentVideo.Width)  * _viewModel.CurrentVideo.Height;
             var thumbnailTimeInterval = _viewModel.ThumbnailTimeInterval;
             
             _logger.LogDebug($"缩略图参数: 时长={duration}s, 间隔={thumbnailTimeInterval:F2}s, 宽度={thumbnailWidth}px");
@@ -340,23 +344,33 @@ namespace VideoCutTool.WPF.Views.Controls
                 
                 _logger.LogDebug($"音频波形参数: 像素/秒={pixelsPerSecond}, 条宽度={barWidth}px, 数据点={waveformData.Count}");
                 
+                // 获取AudioTrackCanvas的实际高度
+                var canvasHeight = AudioTrackCanvas.ActualHeight;
+                if (canvasHeight <= 0)
+                {
+                    canvasHeight = 40; // 如果还没有渲染，使用默认高度
+                }
+                
+                _logger.LogDebug($"AudioTrackCanvas高度: {canvasHeight}px");
+                
                 for (int i = 0; i < waveformData.Count; i++)
                 {
                     var amplitude = waveformData[i];
                     var x = i * barWidth;
-                    var height = Math.Max(2, amplitude * 50); // 将振幅转换为高度
+                    var maxBarHeight = canvasHeight * 1.0; // 最大高度为Canvas高度的80%
+                    var height = Math.Max(2, amplitude * maxBarHeight); // 将振幅转换为高度
                     
                     var bar = new Rectangle
                     {
-                        Fill = new SolidColorBrush(Color.FromRgb(0, 150, 150)), // 青色
-                        Width = barWidth - 1,
+                        Fill = new SolidColorBrush(Color.FromRgb(0, 125, 125)), // 青色
+                        Width = ((barWidth - 1) < 2) ? 2 : (barWidth - 1),
                         Height = height,
                         RadiusX = 1,
                         RadiusY = 1
                     };
                     
                     Canvas.SetLeft(bar, x);
-                    Canvas.SetTop(bar, 30 - height / 2); // 居中显示
+                    Canvas.SetTop(bar, canvasHeight - height); // 在Canvas中垂直居中
                     
                     AudioTrackCanvas.Children.Add(bar);
                     _waveformBars.Add(bar);
@@ -373,17 +387,27 @@ namespace VideoCutTool.WPF.Views.Controls
                 var pixelsPerSecond = _viewModel.PixelsPerSecond;
                 var barWidth = Math.Max(1, pixelsPerSecond / 10);
                 
+                // 获取AudioTrackCanvas的实际高度
+                var canvasHeight = AudioTrackCanvas.ActualHeight;
+                if (canvasHeight <= 0)
+                {
+                    canvasHeight = 40; // 如果还没有渲染，使用默认高度
+                }
+                
+                _logger.LogDebug($"模拟波形 - AudioTrackCanvas高度: {canvasHeight}px");
+                
                 var random = new Random(42); // 固定种子以获得一致的模拟波形
                 
                 for (double time = 0; time < duration; time += 0.1)
                 {
                     var amplitude = random.NextDouble() * 0.8 + 0.2; // 0.2-1.0之间的随机值
                     var x = time * pixelsPerSecond;
-                    var height = amplitude * 40;
+                    var maxBarHeight = canvasHeight * 0.8; // 最大高度为Canvas高度的80%
+                    var height = amplitude * maxBarHeight;
                     
                     var bar = new Rectangle
                     {
-                        Fill = new SolidColorBrush(Color.FromRgb(0, 150, 150)),
+                        Fill = new SolidColorBrush(Color.FromRgb(150, 0, 0)),
                         Width = barWidth - 1,
                         Height = height,
                         RadiusX = 1,
@@ -391,7 +415,7 @@ namespace VideoCutTool.WPF.Views.Controls
                     };
                     
                     Canvas.SetLeft(bar, x);
-                    Canvas.SetTop(bar, 30 - height / 2);
+                    Canvas.SetTop(bar, (canvasHeight - height) / 2); // 在Canvas中垂直居中
                     
                     AudioTrackCanvas.Children.Add(bar);
                     _waveformBars.Add(bar);
@@ -409,36 +433,59 @@ namespace VideoCutTool.WPF.Views.Controls
                 return;
             }
             
-            _logger.LogDebug($"更新播放头位置: {currentTime:mm\\:ss\\.f}");
+            _logger.LogDebug($"更新播放头位置: {currentTime:mm\\:ss\\.f}, 拖拽状态: {_isDraggingPlayhead}");
+            
+            // 如果正在拖拽，不更新播放头位置
+            if (_isDraggingPlayhead)
+            {
+                _logger.LogDebug("正在拖拽中，跳过播放头位置更新");
+                return;
+            }
             
             var pixelsPerSecond = _viewModel.PixelsPerSecond;
             var x = currentTime.TotalSeconds * pixelsPerSecond;
             
-            PlayheadLine.X1 = x;
-            PlayheadLine.X2 = x;
+            _logger.LogDebug($"播放头位置计算 - 像素/秒: {pixelsPerSecond:F2}, X坐标: {x:F2}");
             
-            // 更新播放头块的位置
-            Canvas.SetLeft(PlayheadTopBlock, x - 6);
+            // 使用Dispatcher确保在UI线程上更新
+            Dispatcher.Invoke(() =>
+            {
+                PlayheadLine.X1 = x;
+                PlayheadLine.X2 = x;
+                
+                // 更新播放头块的位置
+                Canvas.SetLeft(PlayheadTopBlock, x - 6);
+            });
             
             // 确保播放头在可视区域内
             if (x > TimelineScrollViewer.HorizontalOffset + TimelineScrollViewer.ViewportWidth - 50)
             {
                 TimelineScrollViewer.ScrollToHorizontalOffset(x - TimelineScrollViewer.ViewportWidth + 100);
+                _logger.LogDebug("播放头超出可视区域，已自动滚动");
             }
         }
         
         // 播放头拖拽事件处理
         private void Playhead_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            _logger.LogInformation($"播放头鼠标按下事件触发 - 位置: {e.GetPosition(PlayheadCanvas)}, 按钮: {e.ChangedButton}");
+            
             _isDraggingPlayhead = true;
             _dragStartPoint = e.GetPosition(PlayheadCanvas);
             _dragStartX = PlayheadLine.X1;
+            
+            _logger.LogInformation($"开始拖拽 - 起始点: {_dragStartPoint}, 起始X: {_dragStartX}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
+            
             PlayheadCanvas.CaptureMouse();
             e.Handled = true;
+            
+            _logger.LogInformation("播放头拖拽开始，鼠标已捕获");
         }
         
         private void Playhead_MouseMove(object sender, MouseEventArgs e)
         {
+            _logger.LogDebug($"播放头鼠标移动事件触发 - 拖拽状态: {_isDraggingPlayhead}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
+            
             if (_isDraggingPlayhead && _viewModel.CurrentVideo != null)
             {
                 var currentPoint = e.GetPosition(PlayheadCanvas);
@@ -449,6 +496,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 var maxX = _viewModel.CurrentVideo.Duration.TotalSeconds * _viewModel.PixelsPerSecond;
                 newX = Math.Max(0, Math.Min(maxX, newX));
                 
+                _logger.LogDebug($"拖拽计算 - 当前点: {currentPoint}, 偏移: {deltaX:F2}, 新X: {newX:F2}, 最大X: {maxX:F2}");
+                
                 // 更新播放头位置
                 PlayheadLine.X1 = newX;
                 PlayheadLine.X2 = newX;
@@ -458,18 +507,32 @@ namespace VideoCutTool.WPF.Views.Controls
                 var pixelsPerSecond = _viewModel.PixelsPerSecond;
                 var time = TimeSpan.FromSeconds(newX / pixelsPerSecond);
                 
+                _logger.LogDebug($"播放头位置更新 - 像素/秒: {pixelsPerSecond:F2}, 时间: {time:mm\\:ss\\.f}");
+                
                 // 通过ViewModel更新
                 _viewModel.UpdatePlayheadPosition(time);
+            }
+            else
+            {
+                _logger.LogDebug($"拖拽条件不满足 - 拖拽状态: {_isDraggingPlayhead}, 视频存在: {_viewModel.CurrentVideo != null}");
             }
         }
         
         private void Playhead_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            _logger.LogInformation($"播放头鼠标释放事件触发 - 拖拽状态: {_isDraggingPlayhead}");
+            
             if (_isDraggingPlayhead)
             {
                 _isDraggingPlayhead = false;
                 PlayheadCanvas.ReleaseMouseCapture();
                 e.Handled = true;
+                
+                _logger.LogInformation("播放头拖拽结束，鼠标已释放");
+            }
+            else
+            {
+                _logger.LogDebug("播放头鼠标释放但未在拖拽状态");
             }
         }
         
@@ -499,7 +562,7 @@ namespace VideoCutTool.WPF.Views.Controls
             };
             
             Canvas.SetLeft(splitLine, 0);
-            SplitPointsCanvas.Children.Add(splitLine);
+            //SplitPointsCanvas.Children.Add(splitLine);
             _splitPoints.Add(splitLine);
             
             // 通过ViewModel触发切分事件
@@ -508,7 +571,7 @@ namespace VideoCutTool.WPF.Views.Controls
         
         public void ClearSplitPoints()
         {
-            SplitPointsCanvas.Children.Clear();
+            //SplitPointsCanvas.Children.Clear();
             _splitPoints.Clear();
         }
         
