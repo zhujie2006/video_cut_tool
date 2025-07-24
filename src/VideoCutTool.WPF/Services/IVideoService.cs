@@ -4,25 +4,11 @@ namespace VideoCutTool.WPF.Services
 {
     public interface IVideoService
     {
-        /// <summary>
-        /// 获取视频信息
-        /// </summary>
         Task<VideoInfo> GetVideoInfoAsync(string filePath);
-        
-        /// <summary>
-        /// 分割视频
-        /// </summary>
-        Task<bool> SplitVideoAsync(string inputPath, string outputPath, TimeSpan startTime, TimeSpan duration);
-        
-        /// <summary>
-        /// 导出视频片段
-        /// </summary>
+        Task<string> SplitVideoAsync(string inputPath, double startTime, double endTime, string outputPath);
         Task<bool> ExportSegmentAsync(string inputPath, string outputPath, TimeSpan startTime, TimeSpan duration, ExportSettings settings, IProgress<int>? progress = null);
-        
-        /// <summary>
-        /// 生成视频缩略图
-        /// </summary>
-        Task<string> GenerateThumbnailAsync(string videoPath, TimeSpan time, string outputPath);
+        Task<string> GenerateThumbnailAsync(string videoPath, double time);
+        Task<List<double>> GenerateAudioWaveformAsync(string videoPath);
     }
     
     public class ExportSettings

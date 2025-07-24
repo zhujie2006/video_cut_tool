@@ -1,0 +1,103 @@
+<UserControl x:Class="VideoCutTool.WPF.Views.Controls.TimelineControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    
+    <UserControl.Resources>
+        <!-- 时间轴样式 -->
+        <Style x:Key="TimelineRulerStyle" TargetType="Canvas">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Height" Value="30" />
+        </Style>
+        
+        <!-- 轨道样式 -->
+        <Style x:Key="TrackStyle" TargetType="Border">
+            <Setter Property="Background" Value="#2A2A2A" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Height" Value="80" />
+        </Style>
+        
+        <!-- 缩略图样式 -->
+        <Style x:Key="ThumbnailStyle" TargetType="Border">
+            <Setter Property="Background" Value="#1A1A1A" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Margin" Value="1" />
+        </Style>
+        
+        <!-- 播放头样式 -->
+        <Style x:Key="PlayheadStyle" TargetType="Line">
+            <Setter Property="Stroke" Value="#FFD700" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="X1" Value="0" />
+            <Setter Property="X2" Value="0" />
+        </Style>
+    </UserControl.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        
+        <!-- 工具栏 -->
+        <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#404040" BorderThickness="0,0,0,1" Padding="8,4">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="放大" Margin="4,0" Padding="8,4" MinWidth="60" 
+                        Background="#404040" Foreground="White" Click="ZoomIn_Click" />
+                <Button Content="缩小" Margin="4,0" Padding="8,4" MinWidth="60" 
+                        Background="#404040" Foreground="White" Click="ZoomOut_Click" />
+                <Button Content="适应窗口" Margin="4,0" Padding="8,4" MinWidth="80" 
+                        Background="#404040" Foreground="White" Click="FitToWindow_Click" />
+                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0" />
+                <TextBlock Text="{Binding ZoomLevel, StringFormat='缩放: {0}%'}" 
+                           VerticalAlignment="Center" Foreground="White" Margin="8,0" />
+            </StackPanel>
+        </Border>
+        
+        <!-- 时间轴内容 -->
+        <ScrollViewer Grid.Row="1" x:Name="TimelineScrollViewer" 
+                      HorizontalScrollBarVisibility="Auto" 
+                      VerticalScrollBarVisibility="Auto"
+                      Background="#1A1A1A">
+            
+            <Canvas x:Name="TimelineCanvas" Background="#1A1A1A" MinWidth="2000">
+                
+                <!-- 时间标尺 -->
+                <Canvas x:Name="RulerCanvas" Canvas.Top="0" Height="30" 
+                        Background="#2A2A2A">
+                    <!-- 时间刻度线会在这里动态生成 -->
+                </Canvas>
+                
+                <!-- 播放头 -->
+                <Line x:Name="PlayheadLine" Canvas.Top="0" Height="200" 
+                      Stroke="#FFD700" StrokeThickness="2" 
+                      X1="0" X2="0" Y1="0" Y2="200" />
+                
+                <!-- 视频信息栏 -->
+                <Border x:Name="VideoInfoBar" Canvas.Top="30" Height="30" 
+                        Background="#2D5A2D" BorderBrush="White" BorderThickness="1" 
+                        CornerRadius="2" Margin="4,2">
+                    <TextBlock x:Name="VideoInfoText" Text="未加载视频" 
+                               Foreground="White" FontSize="12" 
+                               VerticalAlignment="Center" Margin="8,0" />
+                </Border>
+                
+                <!-- 视频缩略图轨道 -->
+                <Canvas x:Name="VideoTrackCanvas" Canvas.Top="60" Height="80" 
+                        Background="#2A2A2A">
+                    <!-- 缩略图会在这里动态生成 -->
+                </Canvas>
+                
+                <!-- 音频波形轨道 -->
+                <Canvas x:Name="AudioTrackCanvas" Canvas.Top="140" Height="60" 
+                        Background="#2A2A2A">
+                    <!-- 音频波形会在这里动态生成 -->
+                </Canvas>
+                
+            </Canvas>
+        </ScrollViewer>
+    </Grid>
+</UserControl> 

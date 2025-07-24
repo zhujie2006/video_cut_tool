@@ -4,6 +4,12 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using VideoCutTool.WPF.ViewModels;
+using VideoCutTool.WPF.Models;
+using System;
+using System.Threading.Tasks;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
+using System.Windows.Media;
 
 namespace VideoCutTool.WPF.Views
 {
@@ -64,8 +70,29 @@ namespace VideoCutTool.WPF.Views
                         break;
                     case nameof(MainWindowViewModel.CurrentTime):
                         UpdateMediaElementPosition(viewModel);
+                        // 更新时间轴播放头
+                        TimelineControl.UpdatePlayhead(viewModel.CurrentTime);
+                        break;
+                    case nameof(MainWindowViewModel.VideoInfo):
+                        // 当视频信息更新时，加载时间轴
+                        if (viewModel.VideoInfo != null)
+                        {
+                            _ = LoadTimelineAsync(viewModel.VideoInfo);
+                        }
                         break;
                 }
+            }
+        }
+        
+        private async Task LoadTimelineAsync(VideoInfo videoInfo)
+        {
+            try
+            {
+                await TimelineControl.LoadVideo(videoInfo);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载时间轴失败: {ex.Message}");
             }
         }
         
@@ -96,33 +123,6 @@ namespace VideoCutTool.WPF.Views
         }
         
         /// <summary>
-        /// 标题栏拖拽事件
-        /// </summary>
-        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-            {
-                DragMove();
-            }
-        }
-        
-        /// <summary>
-        /// 最小化按钮点击事件
-        /// </summary>
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-        {
-            WindowState = WindowState.Minimized;
-        }
-        
-        /// <summary>
-        /// 关闭按钮点击事件
-        /// </summary>
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
-        
-        /// <summary>
         /// MediaElement媒体打开事件
         /// </summary>
         private void VideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
@@ -150,5 +150,63 @@ namespace VideoCutTool.WPF.Views
                 _positionTimer.Stop();
             }
         }
+
+        #region 时间轴高度调整
+
+        private bool _isResizingTimeline = false;
+        private double _startY;
+        private double _startHeight;
+
+        /// <summary>
+        /// 时间轴分隔线鼠标按下事件
+        /// </summary>
+        private void TimelineSeparator_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isResizingTimeline = true;
+                _startY = e.GetPosition(this).Y;
+                _startHeight = TimelineRow.Height.Value;
+                
+                // 捕获鼠标，确保在窗口外也能接收到鼠标事件
+                TimelineSeparator.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// 时间轴分隔线鼠标移动事件
+        /// </summary>
+        private void TimelineSeparator_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isResizingTimeline && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentY = e.GetPosition(this).Y;
+                var deltaY = currentY - _startY;
+                var newHeight = _startHeight - deltaY; // 向上拖拽增加高度，向下拖拽减少高度
+                
+                // 限制在最小和最大高度范围内
+                newHeight = Math.Max(TimelineRow.MinHeight, Math.Min(TimelineRow.MaxHeight, newHeight));
+                
+                TimelineRow.Height = new GridLength(newHeight);
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// 时间轴分隔线鼠标释放事件
+        /// </summary>
+        private void TimelineSeparator_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isResizingTimeline)
+            {
+                _isResizingTimeline = false;
+                TimelineSeparator.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+        
     }
 }
