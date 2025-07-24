@@ -48,13 +48,32 @@ namespace VideoCutTool.WPF.ViewModels
         private string _selectedExportQuality = "高质量 (1080p)";
 
         [ObservableProperty]
-        private ObservableCollection<string> _frameRates = new() { "30 fps", "25 fps", "24 fps", "60 fps" };
+        private ObservableCollection<string> _frameRates = new() { "15 fps", "30 fps", "45 fps", "60 fps" };
 
         [ObservableProperty]
         private string _selectedFrameRate = "30 fps";
 
         [ObservableProperty]
         private ObservableCollection<TimelineSegment> _timelineSegments = new();
+
+        // 新增属性
+        [ObservableProperty]
+        private bool _canUndo = false;
+
+        [ObservableProperty]
+        private bool _canRedo = false;
+
+        [ObservableProperty]
+        private bool _canDelete = false;
+
+        [ObservableProperty]
+        private bool _canCopy = false;
+
+        [ObservableProperty]
+        private string _preciseTimeDisplay = "0:00.0";
+
+        [ObservableProperty]
+        private bool _isPlaying = false;
 
         // Commands
         [RelayCommand]
@@ -79,6 +98,13 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         [RelayCommand]
+        private void CopySegment()
+        {
+            StatusMessage = "复制片段功能待实现";
+            // TODO: 实现片段复制功能
+        }
+
+        [RelayCommand]
         private void Undo()
         {
             StatusMessage = "撤销功能待实现";
@@ -95,16 +121,9 @@ namespace VideoCutTool.WPF.ViewModels
         [RelayCommand]
         private void PlayPause()
         {
-            if (PlayPauseIcon == "Play")
-            {
-                PlayPauseIcon = "Pause";
-                StatusMessage = "播放中";
-            }
-            else
-            {
-                PlayPauseIcon = "Play";
-                StatusMessage = "已暂停";
-            }
+            IsPlaying = !IsPlaying;
+            PlayPauseIcon = IsPlaying ? "Pause" : "Play";
+            StatusMessage = IsPlaying ? "播放中" : "已暂停";
             // TODO: 实现播放/暂停功能
         }
 
@@ -137,9 +156,9 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         [RelayCommand]
-        private void ExportAllSegments()
+        private void Export()
         {
-            StatusMessage = "导出所有片段功能待实现";
+            StatusMessage = "导出功能待实现";
             // TODO: 实现导出功能
         }
 
@@ -154,6 +173,7 @@ namespace VideoCutTool.WPF.ViewModels
         {
             CurrentTime = TimeSpan.FromSeconds(value);
             UpdateTimeDisplay();
+            UpdatePreciseTimeDisplay();
         }
 
         partial void OnVolumeChanged(double value)
@@ -171,6 +191,14 @@ namespace VideoCutTool.WPF.ViewModels
             {
                 TimeDisplay = $"{CurrentTime:mm\\:ss} / 00:00";
             }
+        }
+
+        private void UpdatePreciseTimeDisplay()
+        {
+            var minutes = (int)CurrentTime.TotalMinutes;
+            var seconds = CurrentTime.Seconds;
+            var tenths = (int)(CurrentTime.Milliseconds / 100.0);
+            PreciseTimeDisplay = $"{minutes}:{seconds:D2}.{tenths}";
         }
     }
 } 

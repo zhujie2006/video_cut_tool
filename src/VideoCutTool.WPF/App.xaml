@@ -5,10 +5,20 @@
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <!-- 自定义颜色资源 -->
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E2939" />
+            <SolidColorBrush x:Key="PrimaryButtonBrush" Color="#E7000B" />
+            <SolidColorBrush x:Key="SecondaryButtonBrush" Color="White" />
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="White" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#99A1AF" />
+            <SolidColorBrush x:Key="ButtonTextBrush" Color="#0A0A0A" />
+            
             <ResourceDictionary.MergedDictionaries>
-                <!-- Material Design -->
-                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Red" SecondaryColor="Blue" />
+                <!-- Material Design Defaults -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+                
+                <!-- Material Design Bundled Theme -->
+                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="DeepPurple" SecondaryColor="Teal" />
                 
                 <!-- Application Styles -->
                 <ResourceDictionary Source="Resources/Styles/CommonStyles.xaml" />

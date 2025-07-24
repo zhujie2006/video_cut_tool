@@ -6,32 +6,111 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="视频剪辑工具 - Video Cut Tool"
-        Style="{StaticResource MainWindowStyle}"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Regular"
-        TextElement.FontSize="13"
-        TextOptions.TextFormattingMode="Ideal"
-        TextOptions.TextRenderingMode="Auto"
-        Background="{DynamicResource MaterialDesignPaper}"
-        FontFamily="{DynamicResource MaterialDesignFont}">
-
+        Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="{DynamicResource MaterialDesignFont}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanResize">
+    
     <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="../Resources/Styles/CommonStyles.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
+        <!-- 自定义Card样式 -->
+        <Style x:Key="CustomCardStyle" TargetType="materialDesign:Card">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+        </Style>
 
+        <!-- 自定义 ColorZone 样式 -->
+        <Style x:Key="CustomColorZoneStyle" TargetType="materialDesign:ColorZone">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+        </Style>
+        
+        <!-- 自定义播放控制按钮样式 -->
+        <Style x:Key="PlayControlButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="MinWidth" Value="24" />
+            <Setter Property="MinHeight" Value="24" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#20FFFFFF" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#40FFFFFF" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 自定义ComboBox样式 -->
+        <Style x:Key="CustomComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#0A0A0A" />
+            <Setter Property="BorderBrush" Value="#CCCCCC" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        
+        <!-- 最近导出项目样式 -->
+        <Style x:Key="RecentExportItemStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#20FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 窗口控制按钮样式 -->
+        <Style x:Key="WindowControlButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Foreground" Value="White" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#20FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 关闭按钮样式 -->
+        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E81123" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 分隔线颜色 -->
+        <SolidColorBrush x:Key="SeparatorBrush" Color="#364153" />
+    </Window.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="42" />
+            <RowDefinition Height="1" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="1" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- 顶部工具栏 -->
-        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16,8">
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}"
+            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -42,97 +121,112 @@
                 <!-- 标题 -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <materialDesign:PackIcon Kind="Video" Width="24" Height="24" Margin="0,0,8,0" />
-                    <TextBlock Text="视频剪辑工具" Style="{StaticResource TitleTextStyle}" />
+                    <TextBlock Text="视频剪辑工具" FontSize="16" FontWeight="Medium" />
                 </StackPanel>
 
                 <!-- 中央控制按钮 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ToolButtonStyle}" 
-                            Command="{Binding ImportVideoCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="FolderOpen" Width="16" Height="16" Margin="0,0,4,0" />
-                            <TextBlock Text="导入视频" />
-                        </StackPanel>
-                    </Button>
-                    
-                    <Button Style="{StaticResource ToolButtonStyle}" 
-                            Command="{Binding SplitVideoCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ContentCut" Width="16" Height="16" Margin="0,0,4,0" />
-                            <TextBlock Text="分割" />
-                        </StackPanel>
-                    </Button>
-                    
-                    <Button Style="{StaticResource ToolButtonStyle}" 
-                            Command="{Binding DeleteSegmentCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Delete" Width="16" Height="16" Margin="0,0,4,0" />
-                            <TextBlock Text="删除" />
-                        </StackPanel>
-                    </Button>
+                    <Button Content="导入视频" Margin="4" Padding="12,8" MinWidth="80" Command="{Binding ImportVideoCommand}"
+                            Background="{StaticResource PrimaryButtonBrush}" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <Button Content="导出" Margin="4" Padding="12,8" MinWidth="80" Command="{Binding ExportCommand}"
+                            Background="{StaticResource PrimaryButtonBrush}" Foreground="{StaticResource PrimaryTextBrush}" />
                 </StackPanel>
 
-                <!-- 右侧按钮 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ToolButtonStyle}" 
-                            Command="{Binding UndoCommand}">
-                        <materialDesign:PackIcon Kind="Undo" Width="16" Height="16" />
+                <!-- 窗口控制按钮 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Style="{StaticResource WindowControlButtonStyle}" Click="MinimizeButton_Click">
+                        <materialDesign:PackIcon Kind="WindowMinimize" Width="12" Height="12" />
                     </Button>
-                    
-                    <Button Style="{StaticResource ToolButtonStyle}" 
-                            Command="{Binding RedoCommand}">
-                        <materialDesign:PackIcon Kind="Redo" Width="16" Height="16" />
+                    <Button Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click">
+                        <materialDesign:PackIcon Kind="WindowClose" Width="12" Height="12" />
                     </Button>
                 </StackPanel>
             </Grid>
         </materialDesign:ColorZone>
+        
+        <!-- 顶部工具栏下方分隔线 -->
+        <Border Grid.Row="1" Background="{StaticResource SeparatorBrush}" />
 
+        <!-- 主要内容区域上方分隔线 -->
+        <Border Grid.Row="3" Background="{StaticResource SeparatorBrush}" />
+        
         <!-- 主要内容区域 -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="226" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="226" />
             </Grid.ColumnDefinitions>
 
             <!-- 左侧面板 - 编辑工具 -->
-            <materialDesign:Card Grid.Column="0" Margin="8" Padding="16">
+            <materialDesign:Card Grid.Column="0" Margin="6" Padding="12" Style="{StaticResource CustomCardStyle}">
                 <StackPanel>
-                    <TextBlock Text="编辑工具" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16" />
-                    
-                    <!-- 视频信息 -->
-                    <Expander Header="视频信息" IsExpanded="True" Margin="0,0,0,8">
-                        <StackPanel Margin="8">
-                            <TextBlock Text="{Binding VideoInfo.Name}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding VideoInfo.Duration}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding VideoInfo.Resolution}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding VideoInfo.FrameRate}" Style="{StaticResource InfoTextStyle}" />
-                        </StackPanel>
-                    </Expander>
+                    <!-- 编辑工具 -->
+                    <TextBlock Text="编辑工具" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <StackPanel Margin="0,0,0,16">
+                        <Button Command="{Binding SplitVideoCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentCut" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="切分" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteSegmentCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanDelete}" Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Delete" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="删除 (1)" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding CopySegmentCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanCopy}" Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="复制" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
-                    <!-- 快捷键 -->
-                    <Expander Header="快捷键" IsExpanded="True" Margin="0,0,0,8">
-                        <StackPanel Margin="8">
-                            <TextBlock Text="S - 分割视频" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="Del - 删除片段" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="Ctrl+Z - 撤销" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="Ctrl+Y - 重做" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="Space - 播放/暂停" Style="{StaticResource InfoTextStyle}" />
-                        </StackPanel>
-                    </Expander>
+                    <!-- 回溯 -->
+                    <TextBlock Text="回溯" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <StackPanel Margin="0,0,0,16">
+                        <Button Command="{Binding UndoCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanUndo}" Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Undo" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="撤销" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding RedoCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding CanRedo}" Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Redo" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="重做" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <!-- 存储管理 -->
-                    <Expander Header="存储管理" IsExpanded="True">
-                        <StackPanel Margin="8">
-                            <Button Style="{StaticResource ToolButtonStyle}" 
-                                    Command="{Binding SaveProjectCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,4,0" />
-                                    <TextBlock Text="保存项目" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Expander>
+                    <TextBlock Text="存储管理" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <StackPanel Margin="0,0,0,16">
+                        <Button Command="{Binding SaveProjectCommand}" Margin="0,4" Padding="12,8" HorizontalAlignment="Stretch"
+                                Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentSave" Width="16" Height="16" Margin="0,0,8,0" />
+                                <TextBlock Text="保存项目" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- 快捷键 -->
+                    <TextBlock Text="快捷键" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="S - 分割" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock Text="Del - 删除" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock Text="Ctrl+C - 复制" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock Text="Ctrl+Z - 撤销" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock Text="Space - 播放/暂停" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
                 </StackPanel>
             </materialDesign:Card>
 
@@ -145,35 +239,26 @@
                 </Grid.RowDefinitions>
 
                 <!-- 视频播放器 -->
-                <Border Grid.Row="0" Style="{StaticResource VideoPlayerContainerStyle}">
+                <Border Grid.Row="0" Background="Black" BorderBrush="Gray" BorderThickness="1" Margin="4" CornerRadius="4">
                     <Grid>
-                        <MediaElement x:Name="VideoPlayer" 
-                                     Source="{Binding VideoSource}"
-                                     LoadedBehavior="Manual"
-                                     UnloadedBehavior="Stop" />
-                        
-                        <!-- 播放控制覆盖层 -->
-                        <Grid Background="Transparent">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <Button Style="{StaticResource ToolButtonStyle}" 
-                                        Command="{Binding PlayPauseCommand}"
-                                        Background="Transparent"
-                                        BorderBrush="Transparent">
-                                    <materialDesign:PackIcon Kind="Play" Width="48" Height="48" Foreground="White" />
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-
                         <!-- 视频信息覆盖层 -->
-                        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="16">
-                            <TextBlock Text="{Binding CurrentTime}" Foreground="White" FontSize="14" />
-                            <TextBlock Text="{Binding VideoInfo.Resolution}" Foreground="White" FontSize="12" />
-                        </StackPanel>
+                        <Border Background="#80000000" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
+                                Margin="8" Padding="8,4" CornerRadius="4">
+                            <TextBlock Text="{Binding SelectedFrameRate, StringFormat='1920x1080 | {0}'}" 
+                                       Foreground="White" FontSize="12" />
+                        </Border>
+                        
+                        <!-- 当前时间显示 -->
+                        <Border Background="#80000000" VerticalAlignment="Top" HorizontalAlignment="Left" 
+                                Margin="8" Padding="8,4" CornerRadius="4">
+                            <TextBlock Text="{Binding TimeDisplay}" 
+                                       Foreground="White" FontSize="14" FontWeight="Medium" />
+                        </Border>
                     </Grid>
                 </Border>
 
                 <!-- 播放控制 -->
-                <materialDesign:Card Grid.Row="1" Margin="8" Padding="16">
+                <materialDesign:Card Grid.Row="1" Margin="4" Padding="2" Style="{StaticResource CustomCardStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -183,42 +268,33 @@
 
                         <!-- 播放控制按钮 -->
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Style="{StaticResource ToolButtonStyle}" 
-                                    Command="{Binding PreviousFrameCommand}">
-                                <materialDesign:PackIcon Kind="SkipPrevious" Width="16" Height="16" />
+                            <Button Command="{Binding PreviousFrameCommand}" Style="{StaticResource PlayControlButtonStyle}">
+                                <materialDesign:PackIcon Kind="SkipPrevious" Width="20" Height="20" />
                             </Button>
-                            
-                            <Button Style="{StaticResource ToolButtonStyle}" 
-                                    Command="{Binding PlayPauseCommand}">
-                                <materialDesign:PackIcon Kind="{Binding PlayPauseIcon}" Width="16" Height="16" />
+                            <Button Command="{Binding PlayPauseCommand}" Style="{StaticResource PlayControlButtonStyle}">
+                                <materialDesign:PackIcon Kind="{Binding PlayPauseIcon}" Width="20" Height="20" />
                             </Button>
-                            
-                            <Button Style="{StaticResource ToolButtonStyle}" 
-                                    Command="{Binding NextFrameCommand}">
-                                <materialDesign:PackIcon Kind="SkipNext" Width="16" Height="16" />
+                            <Button Command="{Binding NextFrameCommand}" Style="{StaticResource PlayControlButtonStyle}">
+                                <materialDesign:PackIcon Kind="SkipNext" Width="20" Height="20" />
                             </Button>
                         </StackPanel>
 
-                        <!-- 时间显示和进度条 -->
-                        <StackPanel Grid.Column="1" Margin="16,0">
-                            <TextBlock Text="{Binding TimeDisplay}" HorizontalAlignment="Center" Style="{StaticResource InfoTextStyle}" />
-                            <Slider Value="{Binding CurrentPosition}" 
-                                    Maximum="{Binding VideoInfo.Duration.TotalSeconds}"
-                                    Style="{StaticResource VideoProgressStyle}" />
-                        </StackPanel>
+                        <!-- 时间显示 -->
+                        <TextBlock Grid.Column="1" Text="{Binding PreciseTimeDisplay}" 
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                   FontSize="14" FontWeight="Medium" 
+                                   Foreground="{StaticResource PrimaryTextBrush}" />
 
                         <!-- 音量控制 -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="VolumeHigh" Width="16" Height="16" Margin="0,0,4,0" />
-                            <Slider Value="{Binding Volume}" 
-                                    Minimum="0" Maximum="100" 
-                                    Width="80" />
+                            <materialDesign:PackIcon Kind="VolumeHigh" Width="16" Height="16" Margin="0,0,4,0" Foreground="{StaticResource PrimaryTextBrush}" />
+                            <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" Width="80" Margin="16,0"/>
                         </StackPanel>
                     </Grid>
                 </materialDesign:Card>
 
                 <!-- 时间轴 -->
-                <materialDesign:Card Grid.Row="2" Margin="8" Padding="16">
+                <materialDesign:Card Grid.Row="2" Margin="4" Padding="12" Style="{StaticResource CustomCardStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -226,7 +302,7 @@
                         </Grid.RowDefinitions>
 
                         <!-- 时间轴标题 -->
-                        <TextBlock Grid.Row="0" Text="时间轴" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="0" Text="时间轴" FontSize="16" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
 
                         <!-- 时间轴内容 -->
                         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
@@ -239,8 +315,8 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Width="120" Height="80" 
-                                                Background="{DynamicResource MaterialDesignSurface}"
-                                                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                                Background="LightGray"
+                                                BorderBrush="Gray"
                                                 BorderThickness="1"
                                                 Margin="4"
                                                 CornerRadius="4">
@@ -251,7 +327,7 @@
                                                            HorizontalAlignment="Center" />
                                                 <TextBlock Text="{Binding Duration}" 
                                                            FontSize="8" 
-                                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                           Foreground="Gray"
                                                            HorizontalAlignment="Center" />
                                             </StackPanel>
                                         </Border>
@@ -264,90 +340,94 @@
             </Grid>
 
             <!-- 右侧面板 - 导出设置 -->
-            <materialDesign:Card Grid.Column="2" Margin="8" Padding="16">
+            <materialDesign:Card Grid.Column="2" Margin="6" Padding="12" Style="{StaticResource CustomCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <!-- 导出设置 -->
                     <StackPanel Grid.Row="0">
-                        <TextBlock Text="导出设置" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16" />
+                        <TextBlock Text="导出设置" FontSize="16" FontWeight="Medium" Margin="0,0,0,16" Foreground="{StaticResource PrimaryTextBrush}" />
                         
-                        <TextBlock Text="格式" Style="{StaticResource InfoTextStyle}" />
+                        <TextBlock Text="格式" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
                         <ComboBox ItemsSource="{Binding ExportFormats}" 
                                   SelectedItem="{Binding SelectedExportFormat}"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  Style="{StaticResource CustomComboBoxStyle}"
                                   Margin="0,0,0,8" />
                         
-                        <TextBlock Text="质量" Style="{StaticResource InfoTextStyle}" />
+                        <TextBlock Text="质量" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
                         <ComboBox ItemsSource="{Binding ExportQualities}" 
                                   SelectedItem="{Binding SelectedExportQuality}"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  Style="{StaticResource CustomComboBoxStyle}"
                                   Margin="0,0,0,8" />
                         
-                        <TextBlock Text="帧率" Style="{StaticResource InfoTextStyle}" />
+                        <TextBlock Text="帧率" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
                         <ComboBox ItemsSource="{Binding FrameRates}" 
                                   SelectedItem="{Binding SelectedFrameRate}"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  Style="{StaticResource CustomComboBoxStyle}"
                                   Margin="0,0,0,16" />
                     </StackPanel>
 
                     <!-- 项目信息 -->
-                    <Expander Grid.Row="1" Header="项目信息" IsExpanded="True" Margin="0,0,0,16">
-                        <StackPanel Margin="8">
-                            <TextBlock Text="{Binding ProjectInfo.Name}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding ProjectInfo.TotalDuration}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding ProjectInfo.SegmentCount}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding ProjectInfo.OutputDuration}" Style="{StaticResource InfoTextStyle}" />
-                            <TextBlock Text="{Binding ProjectInfo.EstimatedSize}" Style="{StaticResource InfoTextStyle}" />
+                    <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                        <TextBlock Text="项目信息" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                        <StackPanel Margin="0,0,0,8">
+                            <TextBlock Text="{Binding ProjectInfo.Name, StringFormat='名称: {0}'}" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Text="{Binding ProjectInfo.TotalDuration, StringFormat='总时长: {0}'}" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Text="{Binding ProjectInfo.SegmentCount, StringFormat='分段数: {0}'}" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Text="{Binding ProjectInfo.OutputDuration, StringFormat='输出时长: {0}'}" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Text="{Binding ProjectInfo.EstimatedSize, StringFormat='预估大小: {0}'}" FontSize="12" Margin="4" Foreground="{StaticResource SecondaryTextBrush}" />
                         </StackPanel>
-                    </Expander>
+                    </StackPanel>
 
-                    <!-- 导出按钮 -->
-                    <StackPanel Grid.Row="2">
-                        <Button Style="{StaticResource ExportButtonStyle}" 
-                                Command="{Binding ExportAllSegmentsCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Download" Width="16" Height="16" Margin="0,0,8,0" />
-                                <TextBlock Text="导出所有片段" />
-                            </StackPanel>
-                        </Button>
-                        
-                        <Button Style="{StaticResource ToolButtonStyle}" 
-                                Command="{Binding AdvancedSettingsCommand}"
-                                Margin="8,4">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Settings" Width="16" Height="16" Margin="0,0,4,0" />
-                                <TextBlock Text="高级设置" />
-                            </StackPanel>
-                        </Button>
+                    <!-- 高级设置按钮 -->
+                    <StackPanel Grid.Row="2" Margin="0,0,0,16">
+                        <Button Content="高级设置" 
+                                Margin="8" 
+                                Padding="12,8" 
+                                MinWidth="80"
+                                Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}"
+                                Command="{Binding AdvancedSettingsCommand}" />
+                    </StackPanel>
+                    
+                    <!-- 最近导出 -->
+                    <StackPanel Grid.Row="3">
+                        <TextBlock Text="最近导出" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
+                        <ItemsControl ItemsSource="{Binding RecentExports}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource RecentExportItemStyle}" 
+                                            Command="{Binding DataContext.OpenExportFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding FilePath}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <materialDesign:PackIcon Grid.Column="0" Kind="Video" Width="16" Height="16" 
+                                                                   Margin="0,0,8,0" Foreground="{StaticResource PrimaryTextBrush}" />
+                                            <StackPanel Grid.Column="1" HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding FileName}" FontSize="12" Foreground="{StaticResource PrimaryTextBrush}" />
+                                                <TextBlock Text="{Binding ExportTime}" FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Grid>
             </materialDesign:Card>
         </Grid>
 
         <!-- 底部状态栏 -->
-        <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16,4">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" 
-                           VerticalAlignment="Center" 
-                           Style="{StaticResource InfoTextStyle}" />
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="就绪" Style="{StaticResource InfoTextStyle}" />
-                    <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16" 
-                                             Foreground="{DynamicResource MaterialDesignGreen}"
-                                             Margin="4,0,0,0" />
-                </StackPanel>
-            </Grid>
+        <materialDesign:ColorZone Grid.Row="4" Mode="PrimaryLight" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}">
+            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
         </materialDesign:ColorZone>
     </Grid>
+    
 </Window>
