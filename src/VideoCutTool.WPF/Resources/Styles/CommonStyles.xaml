@@ -1,0 +1,73 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <!-- 主窗口样式 -->
+    <Style x:Key="MainWindowStyle" TargetType="Window">
+        <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
+        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+        <Setter Property="FontFamily" Value="{DynamicResource MaterialDesignFont}" />
+        <Setter Property="WindowStartupLocation" Value="CenterScreen" />
+        <Setter Property="MinWidth" Value="1200" />
+        <Setter Property="MinHeight" Value="800" />
+        <Setter Property="Width" Value="1400" />
+        <Setter Property="Height" Value="900" />
+    </Style>
+
+    <!-- 视频播放器容器样式 -->
+    <Style x:Key="VideoPlayerContainerStyle" TargetType="Border">
+        <Setter Property="Background" Value="Black" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Margin" Value="8" />
+    </Style>
+
+    <!-- 时间轴样式 -->
+    <Style x:Key="TimelineStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource MaterialDesignBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Margin" Value="8" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <!-- 工具按钮样式 -->
+    <Style x:Key="ToolButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+        <Setter Property="Margin" Value="4" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinWidth" Value="80" />
+    </Style>
+
+    <!-- 导出按钮样式 -->
+    <Style x:Key="ExportButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+        <Setter Property="Background" Value="{DynamicResource MaterialDesignRed}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Margin" Value="8" />
+        <Setter Property="Padding" Value="16,12" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- 进度条样式 -->
+    <Style x:Key="VideoProgressStyle" TargetType="ProgressBar" BasedOn="{StaticResource MaterialDesignLinearProgressBar}">
+        <Setter Property="Height" Value="6" />
+        <Setter Property="Margin" Value="8,4" />
+    </Style>
+
+    <!-- 文本块样式 -->
+    <Style x:Key="InfoTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Margin" Value="4" />
+    </Style>
+
+    <!-- 标题文本样式 -->
+    <Style x:Key="TitleTextStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Margin" Value="8,4" />
+    </Style>
+
+</ResourceDictionary> 

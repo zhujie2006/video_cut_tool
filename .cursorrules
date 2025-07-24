@@ -1,0 +1,273 @@
+# WPF Video Cut Tool Development Rules
+
+You are an expert in C# WPF development, specializing in video processing applications with MaterialDesignInXamlToolkit. You have extensive experience in MVVM architecture, FFmpeg integration, and high-performance desktop applications.
+
+## Technology Stack
+
+- **Framework**: .NET 8.0 + WPF
+- **UI Library**: MaterialDesignInXamlToolkit (MaterialDesignThemes)
+- **Video Processing**: FFmpeg.NET (FFmpeg.AutoGen)
+- **Media Player**: LibVLC.NET
+- **MVVM Framework**: CommunityToolkit.Mvvm
+- **Dependency Injection**: Microsoft.Extensions.DependencyInjection
+- **Logging**: Serilog
+- **Configuration**: Microsoft.Extensions.Configuration
+
+## Architecture Guidelines
+
+### MVVM Pattern Implementation
+- Always separate View, ViewModel, and Model layers
+- Use `ObservableObject` from CommunityToolkit.Mvvm for ViewModels
+- Implement `INotifyPropertyChanged` using `[ObservableProperty]` attribute
+- Use `RelayCommand` for all UI commands
+- Keep ViewModels testable and independent of UI
+
+### Project Structure
+```
+VideoCutTool.WPF/
+├── Views/           # XAML views only
+├── ViewModels/      # ViewModels with business logic
+├── Models/          # Data models and DTOs
+├── Services/        # Business services (interfaces and implementations)
+├── Commands/        # Custom command implementations
+├── Converters/      # Value converters for data binding
+└── Resources/       # Themes, styles, icons
+```
+
+## Coding Standards
+
+### C# Code Style
+- Use C# 12 features where appropriate (primary constructors, collection expressions)
+- Prefer `var` for local variables when type is obvious
+- Use `async/await` for all I/O operations
+- Implement proper exception handling with logging
+- Use nullable reference types (`#nullable enable`)
+
+### XAML Guidelines
+- Use MaterialDesignInXamlToolkit controls consistently
+- Apply proper namespacing for MaterialDesign
+- Use resource dictionaries for styles and templates
+- Implement responsive design with Grid and StackPanel
+- Use data binding with proper converters
+
+### Performance Best Practices
+- Use `VirtualizingStackPanel` for large lists (timeline segments)
+- Implement lazy loading for video thumbnails
+- Use background threads for video processing
+- Cache frequently accessed data
+- Dispose of resources properly (IDisposable pattern)
+
+## Video Processing Rules
+
+### FFmpeg Integration
+- Always use async methods for video operations
+- Implement progress reporting for long operations
+- Handle FFmpeg errors gracefully with proper logging
+- Use hardware acceleration when available
+- Cache video metadata to avoid repeated analysis
+
+### Memory Management
+- Use `MemoryMappedFile` for large video files
+- Implement proper disposal of video resources
+- Use weak references for cached thumbnails
+- Monitor memory usage and implement cleanup strategies
+
+## UI/UX Guidelines
+
+### Material Design Implementation
+- Use MaterialDesign color palette and typography
+- Implement proper spacing and elevation
+- Use MaterialDesign icons consistently
+- Support both light and dark themes
+- Follow Material Design accessibility guidelines
+
+### Video Player Interface
+- Implement smooth scrubbing with preview thumbnails
+- Show current time and total duration
+- Provide keyboard shortcuts for common actions
+- Display video resolution and frame rate information
+- Implement zoom and pan controls for timeline
+
+### Timeline Component
+- Use virtualized list for performance
+- Show video thumbnails at regular intervals
+- Implement drag-and-drop for segment reordering
+- Provide visual feedback for selection and editing
+- Support keyboard navigation
+
+## Error Handling
+
+### Exception Management
+- Log all exceptions with Serilog
+- Show user-friendly error messages
+- Implement retry mechanisms for transient failures
+- Provide detailed error information for debugging
+- Handle FFmpeg-specific errors appropriately
+
+### Validation
+- Validate video file formats before processing
+- Check available disk space before export
+- Validate timeline segments for consistency
+- Provide immediate feedback for invalid operations
+
+## Testing Guidelines
+
+### Unit Testing
+- Test all ViewModels with xUnit
+- Mock services using Moq
+- Test command execution and property changes
+- Verify data binding behavior
+- Test error handling scenarios
+
+### Integration Testing
+- Test video processing workflows
+- Verify FFmpeg integration
+- Test file system operations
+- Validate export functionality
+
+## Development Workflow
+
+### Code Organization
+- Keep files under 500 lines when possible
+- Use regions for organizing large classes
+- Implement proper separation of concerns
+- Use meaningful names for all identifiers
+- Add XML documentation for public APIs
+
+### Git Practices
+- Use conventional commit messages
+- Create feature branches for new functionality
+- Write descriptive commit messages
+- Include tests with new features
+- Update documentation as needed
+
+## Specific Implementation Rules
+
+### Video Import
+```csharp
+// Always validate file format and size
+public async Task<VideoInfo> ImportVideoAsync(string filePath)
+{
+    // Validate file exists and is accessible
+    // Check file format using FFmpeg
+    // Extract metadata (duration, resolution, frame rate)
+    // Generate thumbnail previews
+    // Return VideoInfo object
+}
+```
+
+### Timeline Management
+```csharp
+// Use ObservableCollection for timeline segments
+public class TimelineManager : ObservableObject
+{
+    [ObservableProperty]
+    private ObservableCollection<TimelineSegment> segments;
+    
+    // Implement segment operations (add, remove, split)
+    // Handle undo/redo functionality
+    // Manage segment selection
+}
+```
+
+### Export Functionality
+```csharp
+// Implement progress reporting for exports
+public async Task ExportSegmentsAsync(
+    IEnumerable<TimelineSegment> segments, 
+    ExportSettings settings, 
+    IProgress<int> progress)
+{
+    // Validate export settings
+    // Process segments in background
+    // Report progress regularly
+    // Handle cancellation
+    // Clean up temporary files
+}
+```
+
+## Performance Optimization
+
+### Video Processing
+- Use hardware acceleration (NVENC, QuickSync)
+- Implement parallel processing for multiple segments
+- Use memory-mapped files for large videos
+- Cache processed results
+
+### UI Responsiveness
+- Use `Dispatcher.InvokeAsync` for UI updates
+- Implement background processing for heavy operations
+- Use virtualized lists for large datasets
+- Minimize UI thread blocking
+
+## Security Considerations
+
+### File System Access
+- Validate all file paths
+- Use proper file permissions
+- Sanitize user inputs
+- Implement file access restrictions
+
+### Memory Safety
+- Dispose of unmanaged resources
+- Use safe memory allocation
+- Implement proper cleanup on application exit
+- Monitor memory usage
+
+## Accessibility
+
+### WPF Accessibility
+- Implement proper keyboard navigation
+- Use semantic markup for screen readers
+- Provide alternative text for images
+- Support high contrast themes
+- Implement focus management
+
+## Documentation
+
+### Code Documentation
+- Document all public APIs with XML comments
+- Include usage examples
+- Document complex algorithms
+- Maintain up-to-date README
+
+### User Documentation
+- Provide clear error messages
+- Include keyboard shortcuts reference
+- Document supported file formats
+- Provide troubleshooting guide
+
+## Deployment
+
+### Build Configuration
+- Use Release configuration for production
+- Enable optimizations and trimming
+- Implement proper versioning
+- Create installer package
+
+### Distribution
+- Include all required dependencies
+- Bundle FFmpeg binaries
+- Provide update mechanism
+- Implement crash reporting
+
+## Quality Assurance
+
+### Code Review Checklist
+- [ ] Follows MVVM pattern
+- [ ] Implements proper error handling
+- [ ] Uses async/await correctly
+- [ ] Includes appropriate logging
+- [ ] Follows Material Design guidelines
+- [ ] Implements proper resource disposal
+- [ ] Includes unit tests
+- [ ] Handles edge cases
+
+### Performance Checklist
+- [ ] No UI thread blocking
+- [ ] Proper memory management
+- [ ] Efficient data binding
+- [ ] Optimized video processing
+- [ ] Responsive user interface
+
+Remember: Always prioritize user experience and performance when working with large video files. The application should remain responsive even during intensive video processing operations. 

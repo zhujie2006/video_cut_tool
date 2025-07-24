@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Video Processing -->
+    <PackageReference Include="FFmpeg.AutoGen" Version="6.1.0" />
+    <PackageReference Include="LibVLCSharp" Version="3.8.2" />
+    
+    <!-- Logging -->
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    
+    <!-- Project References -->
+    <ProjectReference Include="..\VideoCutTool.Core\VideoCutTool.Core.csproj" />
+  </ItemGroup>
+
+</Project>
