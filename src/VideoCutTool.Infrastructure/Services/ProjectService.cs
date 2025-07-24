@@ -1,9 +1,10 @@
 using System.Text.Json;
-using VideoCutTool.WPF.Models;
+using VideoCutTool.Core.Models;
+using VideoCutTool.Core.Interfaces;
 using Serilog;
 using System.IO;
 
-namespace VideoCutTool.WPF.Services
+namespace VideoCutTool.Infrastructure.Services
 {
     public class ProjectService : IProjectService
     {
@@ -17,13 +18,13 @@ namespace VideoCutTool.WPF.Services
             _recentProjectsPath = Path.Combine(appDataPath, "recent_projects.json");
         }
 
-        public async Task<bool> SaveProjectAsync(ProjectFile project, string filePath)
+        public async Task<bool> SaveProjectAsync(ProjectFile projectFile, string filePath)
         {
             try
             {
                 _logger.Information("开始保存项目到: {FilePath}", filePath);
                 
-                project.ModifiedDate = DateTime.Now;
+                projectFile.LastSavedAt = DateTime.Now;
                 
                 var options = new JsonSerializerOptions
                 {
@@ -31,7 +32,7 @@ namespace VideoCutTool.WPF.Services
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
                 
-                var json = JsonSerializer.Serialize(project, options);
+                var json = JsonSerializer.Serialize(projectFile, options);
                 await File.WriteAllTextAsync(filePath, json);
                 
                 // 保存到最近项目列表
@@ -47,7 +48,7 @@ namespace VideoCutTool.WPF.Services
             }
         }
 
-        public async Task<ProjectFile?> LoadProjectAsync(string filePath)
+        public async Task<ProjectFile> LoadProjectAsync(string filePath)
         {
             try
             {
@@ -150,6 +151,52 @@ namespace VideoCutTool.WPF.Services
             catch (Exception ex)
             {
                 _logger.Error(ex, "保存最近项目列表失败");
+            }
+        }
+
+        public async Task<bool> ValidateProjectFileAsync(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    return false;
+                }
+
+                var json = await File.ReadAllTextAsync(filePath);
+                var project = JsonSerializer.Deserialize<ProjectFile>(json);
+                return project != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "验证项目文件失败: {FilePath}", filePath);
+                return false;
+            }
+        }
+
+        public async Task<ProjectFile> CreateNewProjectAsync(string videoPath)
+        {
+            try
+            {
+                var projectFile = new ProjectFile
+                {
+                    ProjectInfo = new ProjectInfo
+                    {
+                        Name = Path.GetFileNameWithoutExtension(videoPath),
+                        CreatedDate = DateTime.Now,
+                        LastModifiedDate = DateTime.Now
+                    },
+                    CreatedAt = DateTime.Now,
+                    LastSavedAt = DateTime.Now,
+                    ProjectFilePath = string.Empty
+                };
+
+                return projectFile;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "创建新项目失败: {VideoPath}", videoPath);
+                throw;
             }
         }
     }

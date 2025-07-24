@@ -4,7 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using VideoCutTool.WPF.ViewModels;
-using VideoCutTool.WPF.Models;
+using VideoCutTool.Core.Models;
 using System;
 using System.Threading.Tasks;
 using System.Windows.Interop;
@@ -89,10 +89,30 @@ namespace VideoCutTool.WPF.Views
             try
             {
                 await TimelineControl.LoadVideo(videoInfo);
+                
+                // 连接TimelineControl的事件
+                TimelineControl.PlayheadPositionChanged += OnTimelinePlayheadPositionChanged;
+                TimelineControl.SplitPointRequested += OnTimelineSplitPointRequested;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"加载时间轴失败: {ex.Message}");
+            }
+        }
+        
+        private void OnTimelinePlayheadPositionChanged(TimeSpan newTime)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.OnPlayheadPositionChanged(newTime);
+            }
+        }
+        
+        private void OnTimelineSplitPointRequested(TimeSpan splitTime)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.OnSplitPointRequested(splitTime);
             }
         }
         
@@ -207,25 +227,5 @@ namespace VideoCutTool.WPF.Views
         }
 
         #endregion
-
-        #region 时间轴片段事件处理
-
-        /// <summary>
-        /// 时间轴片段点击事件
-        /// </summary>
-        private void TimelineSegment_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is Border border && border.DataContext is TimelineSegment segment)
-            {
-                if (DataContext is MainWindowViewModel viewModel)
-                {
-                    viewModel.SelectSegmentCommand.Execute(segment);
-                }
-                e.Handled = true;
-            }
-        }
-
-        #endregion
-        
     }
 }

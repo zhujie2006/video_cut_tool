@@ -15,7 +15,7 @@
             <Setter Property="Background" Value="#2A2A2A" />
             <Setter Property="BorderBrush" Value="#404040" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Height" Value="80" />
+            <Setter Property="Height" Value="60" />
         </Style>
         
         <!-- 缩略图样式 -->
@@ -28,11 +28,117 @@
         </Style>
         
         <!-- 播放头样式 -->
-        <Style x:Key="PlayheadStyle" TargetType="Line">
-            <Setter Property="Stroke" Value="#FFD700" />
+        <Style x:Key="PlayheadStyle" TargetType="Canvas">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="SizeWE" />
+        </Style>
+        
+        <!-- 切分点样式 -->
+        <Style x:Key="SplitPointStyle" TargetType="Line">
+            <Setter Property="Stroke" Value="#FF4444" />
             <Setter Property="StrokeThickness" Value="2" />
             <Setter Property="X1" Value="0" />
             <Setter Property="X2" Value="0" />
+        </Style>
+        
+        <!-- 工具栏按钮样式 -->
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Foreground" Value="White" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#20FFFFFF" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#40FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 自定义滚动条样式 -->
+        <Style x:Key="ModernScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="MinWidth" Value="8" />
+            <Setter Property="MinHeight" Value="4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid>
+                            <Track x:Name="PART_Track" Grid.Row="0" IsDirectionReversed="true">
+                                <Track.Thumb>
+                                    <Thumb x:Name="Thumb" Background="#60FFFFFF" 
+                                           BorderBrush="Transparent" BorderThickness="0"
+                                           MinWidth="8" MinHeight="4">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#80FFFFFF" 
+                                                        CornerRadius="4,2,4,2" 
+                                                        Margin="1" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- 自定义ScrollViewer样式 -->
+        <Style x:Key="ModernScrollViewerStyle" TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            
+                            <ScrollContentPresenter Grid.Column="0" Grid.Row="0" 
+                                                  CanContentScroll="{TemplateBinding CanContentScroll}" 
+                                                  CanHorizontallyScroll="False" 
+                                                  CanVerticallyScroll="False" 
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}" 
+                                                  Content="{TemplateBinding Content}" 
+                                                  Grid.ColumnSpan="2" 
+                                                  Grid.RowSpan="2" 
+                                                  KeyboardNavigation.DirectionalNavigation="Local" />
+                            
+                            <ScrollBar x:Name="PART_HorizontalScrollBar" 
+                                      Grid.Column="0" Grid.Row="1" 
+                                      Style="{StaticResource ModernScrollBarStyle}"
+                                      Orientation="Horizontal" 
+                                      Maximum="{TemplateBinding ScrollViewer.ScrollableWidth}" 
+                                      Minimum="0" 
+                                      Value="{TemplateBinding ScrollViewer.HorizontalOffset}" 
+                                      ViewportSize="{TemplateBinding ScrollViewer.ViewportWidth}" 
+                                      Visibility="Visible" />
+                            
+                            <ScrollBar x:Name="PART_VerticalScrollBar" 
+                                      Grid.Column="1" Grid.Row="0" 
+                                      Style="{StaticResource ModernScrollBarStyle}"
+                                      Maximum="{TemplateBinding ScrollViewer.ScrollableHeight}" 
+                                      Minimum="0" 
+                                      Value="{TemplateBinding ScrollViewer.VerticalOffset}" 
+                                      ViewportSize="{TemplateBinding ScrollViewer.ViewportHeight}" 
+                                      Visibility="{TemplateBinding ScrollViewer.ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
     
@@ -43,61 +149,95 @@
         </Grid.RowDefinitions>
         
         <!-- 工具栏 -->
-        <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#404040" BorderThickness="0,0,0,1" Padding="8,4">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Content="放大" Margin="4,0" Padding="8,4" MinWidth="60" 
-                        Background="#404040" Foreground="White" Click="ZoomIn_Click" />
-                <Button Content="缩小" Margin="4,0" Padding="8,4" MinWidth="60" 
-                        Background="#404040" Foreground="White" Click="ZoomOut_Click" />
-                <Button Content="适应窗口" Margin="4,0" Padding="8,4" MinWidth="80" 
-                        Background="#404040" Foreground="White" Click="FitToWindow_Click" />
-                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0" />
-                <TextBlock Text="{Binding ZoomLevel, StringFormat='缩放: {0}%'}" 
-                           VerticalAlignment="Center" Foreground="White" Margin="8,0" />
-            </StackPanel>
+        <Border Grid.Row="0" BorderBrush="#404040" BorderThickness="0,0,0,1" Padding="8,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                
+                <!-- 缩放控制 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource ToolbarButtonStyle}" Click="ZoomOut_Click" ToolTip="缩小">
+                        <materialDesign:PackIcon Kind="MagnifyMinus" Width="16" Height="16" />
+                    </Button>
+                    <Slider x:Name="ZoomSlider" Width="80" Minimum="1" Maximum="100" Value="1"
+                            Margin="8,0" VerticalAlignment="Center" 
+                            ValueChanged="ZoomSlider_ValueChanged" />
+                    <Button Style="{StaticResource ToolbarButtonStyle}" Click="ZoomIn_Click" ToolTip="放大">
+                        <materialDesign:PackIcon Kind="MagnifyPlus" Width="16" Height="16" />
+                    </Button>
+                </StackPanel>
+                
+                <!-- 缩放信息 -->
+                <TextBlock Grid.Column="1" Text="{Binding ElementName=ZoomSlider, Path=Value, StringFormat='缩放: {0:F0}'}" 
+                           VerticalAlignment="Center" Foreground="White" Margin="16,0" HorizontalAlignment="Center" />
+                
+                <!-- 适应窗口按钮 -->
+                <Button Grid.Column="2" Style="{StaticResource ToolbarButtonStyle}" Click="FitToWindow_Click" ToolTip="适应窗口">
+                    <materialDesign:PackIcon Kind="FitToPage" Width="16" Height="16" />
+                </Button>
+            </Grid>
         </Border>
         
         <!-- 时间轴内容 -->
         <ScrollViewer Grid.Row="1" x:Name="TimelineScrollViewer" 
-                      HorizontalScrollBarVisibility="Auto" 
-                      VerticalScrollBarVisibility="Auto"
-                      Background="#1A1A1A">
+                      Style="{StaticResource ModernScrollViewerStyle}"
+                      HorizontalScrollBarVisibility="Visible"
+                      VerticalScrollBarVisibility="Disabled">
             
-            <Canvas x:Name="TimelineCanvas" Background="#1A1A1A" MinWidth="2000">
+            <Grid x:Name="TimelineGrid" MinWidth="1000" HorizontalAlignment="Left" Margin="20,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30" /> <!-- 时间标尺 -->
+                    <RowDefinition Height="*" /> 
+                    <RowDefinition Height="40" /> <!-- 音频波形轨道 -->
+                </Grid.RowDefinitions>
                 
                 <!-- 时间标尺 -->
-                <Canvas x:Name="RulerCanvas" Canvas.Top="0" Height="30" 
-                        Background="#2A2A2A">
-                    <!-- 时间刻度线会在这里动态生成 -->
-                </Canvas>
-                
-                <!-- 播放头 -->
-                <Line x:Name="PlayheadLine" Canvas.Top="0" Height="200" 
-                      Stroke="#FFD700" StrokeThickness="2" 
-                      X1="0" X2="0" Y1="0" Y2="200" />
-                
-                <!-- 视频信息栏 -->
-                <Border x:Name="VideoInfoBar" Canvas.Top="30" Height="30" 
-                        Background="#2D5A2D" BorderBrush="White" BorderThickness="1" 
-                        CornerRadius="2" Margin="4,2">
-                    <TextBlock x:Name="VideoInfoText" Text="未加载视频" 
-                               Foreground="White" FontSize="12" 
-                               VerticalAlignment="Center" Margin="8,0" />
+                <Border Grid.Row="0" x:Name="RulerContainer">
+                    <Canvas x:Name="RulerCanvas" Background="Transparent">
+                        <!-- 时间刻度线会在这里动态生成 -->
+                    </Canvas>
                 </Border>
                 
                 <!-- 视频缩略图轨道 -->
-                <Canvas x:Name="VideoTrackCanvas" Canvas.Top="60" Height="80" 
-                        Background="#2A2A2A">
-                    <!-- 缩略图会在这里动态生成 -->
-                </Canvas>
+                <Grid Grid.Row="1" x:Name="VideoTrackContainer" VerticalAlignment="Center">
+                    <Canvas x:Name="VideoTrackCanvas" Background="Transparent" Height="80">
+                        <!-- 缩略图会在这里动态生成 -->
+                    </Canvas>
+                </Grid>
                 
                 <!-- 音频波形轨道 -->
-                <Canvas x:Name="AudioTrackCanvas" Canvas.Top="140" Height="60" 
-                        Background="#2A2A2A">
-                    <!-- 音频波形会在这里动态生成 -->
+                <Border Grid.Row="2" x:Name="AudioTrackContainer">
+                    <Canvas x:Name="AudioTrackCanvas" Background="Transparent">
+                        <!-- 音频波形会在这里动态生成 -->
+                    </Canvas>
+                </Border>
+
+                <!-- 播放头 - 覆盖在所有轨道上方 -->
+                <Canvas x:Name="PlayheadCanvas" Grid.RowSpan="3" 
+                        Background="Transparent" Cursor="SizeWE"
+                        MouseLeftButtonDown="Playhead_MouseLeftButtonDown"
+                        MouseMove="Playhead_MouseMove"
+                        MouseLeftButtonUp="Playhead_MouseLeftButtonUp">
+                    <!-- 播放头线条 -->
+                    <Line x:Name="PlayheadLine" 
+                          Stroke="#FFD700" StrokeThickness="3" 
+                          X1="0" X2="0" Y1="0" Y2="{Binding ElementName=TimelineGrid,Path=ActualHeight}" />
+                    <!-- 播放头顶部块 -->
+                    <Border x:Name="PlayheadTopBlock" Canvas.Top="0" Width="12" Height="8" 
+                            Background="#FFD700" CornerRadius="2" 
+                            HorizontalAlignment="Center" />
                 </Canvas>
                 
-            </Canvas>
+                <!-- 切分点集合 - 覆盖在所有轨道上方 -->
+                <Canvas x:Name="SplitPointsCanvas" Grid.RowSpan="3" 
+                        Background="Transparent">
+                    <!-- 切分点会在这里动态生成 -->
+                </Canvas>
+                
+            </Grid>
         </ScrollViewer>
     </Grid>
 </UserControl> 

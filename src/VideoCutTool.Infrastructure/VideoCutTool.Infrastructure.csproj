@@ -14,8 +14,14 @@
     <!-- Logging -->
     <PackageReference Include="Serilog" Version="3.1.1" />
     
+    <!-- JSON Serialization -->
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    
     <!-- Project References -->
     <ProjectReference Include="..\VideoCutTool.Core\VideoCutTool.Core.csproj" />
+    
+    <!-- Windows Forms for Folder Browser Dialog -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
 </Project>

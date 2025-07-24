@@ -217,41 +217,7 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- 时间轴片段列表 -->
-                    <TextBlock Text="时间轴片段" FontSize="14" FontWeight="Medium" Margin="0,16,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
-                    <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16">
-                        <ItemsControl ItemsSource="{Binding TimelineSegments}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,2" Padding="8" Background="{Binding IsSelected, Converter={StaticResource SelectedBackgroundConverter}}" 
-                                            BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="1" CornerRadius="4"
-                                            MouseLeftButtonDown="TimelineSegment_MouseLeftButtonDown">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium" 
-                                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                                                <TextBlock Text="{Binding StartTime, StringFormat='开始: {0:mm\\:ss}'}" 
-                                                           FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" />
-                                                <TextBlock Text="{Binding Duration, StringFormat='时长: {0:mm\\:ss}'}" 
-                                                           FontSize="10" Foreground="{StaticResource SecondaryTextBrush}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Style="{StaticResource PlayControlButtonStyle}" Width="24" Height="24" Margin="2,0"
-                                                        Command="{Binding DataContext.PlaySegmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}">
-                                                    <materialDesign:PackIcon Kind="Play" Width="12" Height="12" />
-                                                </Button>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+
 
                     <!-- 快捷键 -->
                     <TextBlock Text="快捷键" FontSize="14" FontWeight="Medium" Margin="0,0,0,8" Foreground="{StaticResource PrimaryTextBrush}" />
@@ -298,16 +264,6 @@
                                 Margin="8" Padding="8,4" CornerRadius="4">
                             <TextBlock Text="{Binding TimeDisplay}" 
                                        Foreground="White" FontSize="14" FontWeight="Medium" />
-                        </Border>
-                        
-                        <!-- 播放状态指示器 -->
-                        <Border Background="#80000000" VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                Margin="8" Padding="12,8" CornerRadius="8" 
-                                Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Play" Width="24" Height="24" Foreground="White" />
-                                <TextBlock Text="播放中" Foreground="White" FontSize="16" FontWeight="Medium" Margin="8,0,0,0" />
-                            </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
@@ -437,27 +393,9 @@
             </materialDesign:Card>
         </Grid>
 
-        <!-- 时间轴 -->
-        <materialDesign:Card Grid.Row="2" Margin="4" Padding="12" Style="{StaticResource CustomCardStyle}" x:Name="TimelineCard">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                
-                <!-- 时间轴工具栏 -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="时间轴片段" FontSize="14" FontWeight="Medium" 
-                               Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding TimelineSegments.Count, StringFormat=' ({0})'}" 
-                               FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" 
-                               VerticalAlignment="Center" Margin="4,0,0,0" />
-                </StackPanel>
-                
-                <!-- 时间轴控件 -->
-                <controls:TimelineControl Grid.Row="1" x:Name="TimelineControl" />
-            </Grid>
-        </materialDesign:Card>
+        <!-- 时间轴控件 -->
+        <controls:TimelineControl Grid.Row="2" Margin="4" x:Name="TimelineControl" 
+            Background="{StaticResource AppBackgroundBrush}" />
 
         <!-- 底部状态栏 -->
         <materialDesign:ColorZone Grid.Row="4" Mode="PrimaryLight" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}">

@@ -41,16 +41,15 @@
     <!-- Project References -->
     <ProjectReference Include="..\VideoCutTool.Core\VideoCutTool.Core.csproj" />
     <ProjectReference Include="..\VideoCutTool.Infrastructure\VideoCutTool.Infrastructure.csproj" />
+    
+    <!-- Windows Forms for Folder Browser Dialog -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
 </Project>

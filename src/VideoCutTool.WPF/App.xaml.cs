@@ -5,7 +5,8 @@ using Serilog;
 using System.IO;
 using System.Windows;
 using VideoCutTool.WPF.ViewModels;
-using VideoCutTool.WPF.Services;
+using VideoCutTool.Core.Interfaces;
+using VideoCutTool.Infrastructure.Services;
 
 namespace VideoCutTool.WPF
 {
@@ -69,6 +70,7 @@ namespace VideoCutTool.WPF
 
             // Register ViewModels
             services.AddTransient<MainWindowViewModel>();
+            services.AddTransient<TimelineControlViewModel>();
         }
 
         protected override async void OnExit(ExitEventArgs e)

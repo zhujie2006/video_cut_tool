@@ -1,9 +1,10 @@
 using System.Diagnostics;
 using System.IO;
-using VideoCutTool.WPF.Models;
+using VideoCutTool.Core.Interfaces;
+using VideoCutTool.Core.Models;
 using Serilog;
 
-namespace VideoCutTool.WPF.Services
+namespace VideoCutTool.Infrastructure.Services
 {
     public class VideoService : IVideoService
     {
@@ -468,21 +469,21 @@ namespace VideoCutTool.WPF.Services
             var args = $"-i \"{inputPath}\" -ss {startTime.TotalSeconds:F3} -t {duration.TotalSeconds:F3}";
             
             // 根据质量设置编码参数
-            switch (settings.Quality)
+            if (settings.OutputQuality >= 85)
             {
-                case "高质量 (1080p)":
-                    args += " -vf scale=1920:1080 -c:v libx264 -crf 18";
-                    break;
-                case "中等质量 (720p)":
-                    args += " -vf scale=1280:720 -c:v libx264 -crf 23";
-                    break;
-                case "低质量 (480p)":
-                    args += " -vf scale=854:480 -c:v libx264 -crf 28";
-                    break;
+                args += " -vf scale=1920:1080 -c:v libx264 -crf 18";
+            }
+            else if (settings.OutputQuality >= 60)
+            {
+                args += " -vf scale=1280:720 -c:v libx264 -crf 23";
+            }
+            else
+            {
+                args += " -vf scale=854:480 -c:v libx264 -crf 28";
             }
             
             // 设置帧率
-            var frameRate = settings.FrameRate.Replace(" fps", "");
+            var frameRate = settings.FrameRate;
             args += $" -r {frameRate}";
             
             // 设置音频编码

@@ -1,5 +1,8 @@
-namespace VideoCutTool.WPF.Services
+namespace VideoCutTool.Core.Interfaces
 {
+    /// <summary>
+    /// 文件对话框服务接口
+    /// </summary>
     public interface IFileDialogService
     {
         /// <summary>
@@ -32,4 +35,4 @@ namespace VideoCutTool.WPF.Services
         /// </summary>
         string? OpenProjectFile();
     }
-} 
+}

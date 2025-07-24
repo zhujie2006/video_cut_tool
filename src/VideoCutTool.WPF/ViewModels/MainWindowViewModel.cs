@@ -4,8 +4,8 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.IO;
 using System.Windows.Threading;
-using VideoCutTool.WPF.Models;
-using VideoCutTool.WPF.Services;
+using VideoCutTool.Core.Models;
+using VideoCutTool.Core.Interfaces;
 using VideoCutTool.WPF.Views;
 using Serilog;
 
@@ -161,7 +161,7 @@ namespace VideoCutTool.WPF.ViewModels
                 // 初始化项目信息
                 _logger.Debug("初始化项目信息");
                 ProjectInfo.Name = VideoInfo.Name;
-                ProjectInfo.TotalDuration = VideoInfo.Duration;
+                ProjectInfo.Duration = VideoInfo.Duration;
                 ProjectInfo.SegmentCount = 0;
                 ProjectInfo.OutputDuration = TimeSpan.Zero;
                 ProjectInfo.EstimatedSize = "0 MB";
@@ -471,17 +471,17 @@ namespace VideoCutTool.WPF.ViewModels
                 // 创建项目文件
                 var project = new ProjectFile
                 {
-                    Name = ProjectInfo.Name,
+                    //Name = ProjectInfo.Name,
                     VideoInfo = VideoInfo,
-                    VideoSource = VideoSource ?? string.Empty,
+                    //VideoSource = VideoSource ?? string.Empty,
                     TimelineSegments = TimelineSegments.ToList(),
                     CurrentTime = CurrentTime,
                     Volume = Volume,
                     ExportSettings = new ExportSettings
                     {
                         Format = SelectedExportFormat,
-                        Quality = SelectedExportQuality,
-                        FrameRate = SelectedFrameRate
+                       // OutputQuality = SelectedExportQuality,
+                       // FrameRate = SelectedFrameRate
                     }
                 };
                 
@@ -526,7 +526,7 @@ namespace VideoCutTool.WPF.ViewModels
                 StatusMessage = "正在加载项目...";
                 
                 var project = await _projectService.LoadProjectAsync(filePath);
-                if (project == null)
+                if (project == null || project.VideoInfo == null)
                 {
                     _logger.Error("项目文件加载失败: {FilePath}", filePath);
                     StatusMessage = "项目文件加载失败";
@@ -534,16 +534,16 @@ namespace VideoCutTool.WPF.ViewModels
                 }
                 
                 // 验证视频文件是否存在
-                if (!string.IsNullOrEmpty(project.VideoSource) && !File.Exists(project.VideoSource))
+                if (!string.IsNullOrEmpty(project.VideoInfo.FilePath) && !File.Exists(project.VideoInfo.FilePath))
                 {
-                    _logger.Warning("项目中的视频文件不存在: {VideoSource}", project.VideoSource);
+                    _logger.Warning("项目中的视频文件不存在: {VideoSource}", project.VideoInfo.FilePath);
                     StatusMessage = "项目中的视频文件不存在，请重新选择";
                     
                     // 让用户重新选择视频文件
                     var newVideoPath = _fileDialogService.SelectVideoFile();
                     if (!string.IsNullOrEmpty(newVideoPath))
                     {
-                        project.VideoSource = newVideoPath;
+                        project.VideoInfo.FilePath = newVideoPath;
                         if (project.VideoInfo != null)
                         {
                             project.VideoInfo.FilePath = newVideoPath;
@@ -558,7 +558,7 @@ namespace VideoCutTool.WPF.ViewModels
                 
                 // 加载项目数据
                 VideoInfo = project.VideoInfo;
-                VideoSource = project.VideoSource;
+                VideoSource = project.VideoInfo.FilePath;
                 CurrentTime = project.CurrentTime;
                 Volume = project.Volume;
                 
@@ -572,8 +572,8 @@ namespace VideoCutTool.WPF.ViewModels
                 if (project.ExportSettings != null)
                 {
                     SelectedExportFormat = project.ExportSettings.Format;
-                    SelectedExportQuality = project.ExportSettings.Quality;
-                    SelectedFrameRate = project.ExportSettings.FrameRate;
+                    SelectedExportQuality = project.ExportSettings.OutputQuality + "";
+                    SelectedFrameRate = project.ExportSettings.FrameRate + "";
                 }
                 
                 // 更新项目信息
@@ -634,13 +634,13 @@ namespace VideoCutTool.WPF.ViewModels
                 var exportSettings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
-                    Quality = SelectedExportQuality,
-                    FrameRate = SelectedFrameRate,
-                    OutputPath = outputFolder
+                    OutputQuality = int.Parse(SelectedExportQuality),
+                    FrameRate = int.Parse(SelectedFrameRate),
+                    //OutputPath = outputFolder
                 };
                 
                 _logger.Information("导出设置 - 格式: {Format}, 质量: {Quality}, 帧率: {FrameRate}", 
-                    exportSettings.Format, exportSettings.Quality, exportSettings.FrameRate);
+                    exportSettings.Format, exportSettings.OutputQuality, exportSettings.FrameRate);
                 
                 var successCount = 0;
                 foreach (var segment in TimelineSegments)
@@ -667,11 +667,12 @@ namespace VideoCutTool.WPF.ViewModels
                         // 添加到最近导出列表
                         var recentExport = new RecentExport
                         {
-                            FileName = outputFileName,
                             FilePath = outputPath,
-                            ExportTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                            ExportDate = DateTime.Now,
-                            FileSize = new FileInfo(outputPath).Length
+                            ExportTime = DateTime.Now,
+                            Format = SelectedExportFormat,
+                            FileSize = new FileInfo(outputPath).Length,
+                            ExportSettings = exportSettings,
+                            Status = "成功"
                         };
                         
                         RecentExports.Insert(0, recentExport);
@@ -713,12 +714,12 @@ namespace VideoCutTool.WPF.ViewModels
                 var settings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
-                    Quality = SelectedExportQuality,
-                    FrameRate = SelectedFrameRate,
+                    OutputQuality = int.Parse(SelectedExportQuality),
+                    FrameRate = int.Parse(SelectedFrameRate),
                     VideoCodec = "h264",
                     AudioCodec = "aac",
-                    Bitrate = 5000,
-                    AudioEnabled = true
+                    VideoBitrate = 5000,
+                    AudioChannels = 1
                 };
                 
                 var advancedSettingsViewModel = new AdvancedSettingsViewModel(settings);
@@ -735,8 +736,8 @@ namespace VideoCutTool.WPF.ViewModels
                     
                     // 更新导出设置
                     SelectedExportFormat = updatedSettings.Format;
-                    SelectedExportQuality = updatedSettings.Quality;
-                    SelectedFrameRate = updatedSettings.FrameRate;
+                    SelectedExportQuality = updatedSettings.OutputQuality + "";
+                    SelectedFrameRate = updatedSettings.FrameRate + "";
                     
                     _logger.Information("高级设置已保存");
                     StatusMessage = "高级设置已更新";
@@ -800,6 +801,60 @@ namespace VideoCutTool.WPF.ViewModels
             }
             
             StatusMessage = $"播放片段: {segment.Name}";
+        }
+        
+        // 播放头位置改变事件处理
+        public void OnPlayheadPositionChanged(TimeSpan newTime)
+        {
+            CurrentTime = newTime;
+            
+            // 如果正在播放，先暂停
+            if (IsPlaying)
+            {
+                IsPlaying = false;
+                PlayPauseIcon = "Play";
+            }
+        }
+        
+        // 切分点请求事件处理
+        public void OnSplitPointRequested(TimeSpan splitTime)
+        {
+            // 在当前播放头位置添加切分点
+            SplitVideoAtCurrentPosition();
+        }
+        
+        // 在当前播放头位置切分视频
+        private void SplitVideoAtCurrentPosition()
+        {
+            if (VideoInfo == null) return;
+            
+            var splitTime = CurrentTime;
+            
+            // 创建新的时间轴片段
+            var newSegment = new TimelineSegment
+            {
+                Name = $"片段 {TimelineSegments.Count + 1}",
+                StartTime = splitTime,
+                EndTime = VideoInfo.Duration,
+                CreatedDate = DateTime.Now
+            };
+            
+            // 添加到时间轴
+            TimelineSegments.Add(newSegment);
+            
+            // 更新项目信息
+            UpdateProjectInfo();
+            
+            // 记录撤销操作
+            var undoAction = new Action(() =>
+            {
+                TimelineSegments.Remove(newSegment);
+                UpdateProjectInfo();
+            });
+            _undoStack.Push(undoAction);
+            _redoStack.Clear();
+            
+            UpdateCommandStates();
         }
 
         partial void OnCurrentPositionChanged(double value)

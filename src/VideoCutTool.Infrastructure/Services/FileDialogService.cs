@@ -2,8 +2,10 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using WinForms = System.Windows.Forms;
+using VideoCutTool.Core.Interfaces;
+using System.Windows.Forms;
 
-namespace VideoCutTool.WPF.Services
+namespace VideoCutTool.Infrastructure.Services
 {
     public class FileDialogService : IFileDialogService
     {
@@ -15,15 +17,15 @@ namespace VideoCutTool.WPF.Services
                 Filter = "视频文件|*.mp4;*.avi;*.mov;*.mkv;*.wmv;*.flv;*.webm|所有文件|*.*",
                 Multiselect = false
             };
-            
-            if (openFileDialog.ShowDialog() == true)
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 return openFileDialog.FileName;
             }
-            
+
             return null;
         }
-        
+
         public string? SelectSaveFile(string defaultName, string filter)
         {
             var saveFileDialog = new SaveFileDialog
@@ -32,30 +34,30 @@ namespace VideoCutTool.WPF.Services
                 FileName = defaultName,
                 Filter = filter
             };
-            
-            if (saveFileDialog.ShowDialog() == true)
+
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 return saveFileDialog.FileName;
             }
-            
+
             return null;
         }
-        
+
         public string? SelectFolder()
         {
             var folderBrowserDialog = new WinForms.FolderBrowserDialog
             {
                 Description = "选择输出文件夹"
             };
-            
+
             if (folderBrowserDialog.ShowDialog() == WinForms.DialogResult.OK)
             {
                 return folderBrowserDialog.SelectedPath;
             }
-            
+
             return null;
         }
-        
+
         public void OpenFileInExplorer(string filePath)
         {
             if (File.Exists(filePath))
@@ -69,7 +71,7 @@ namespace VideoCutTool.WPF.Services
                 Process.Start("explorer.exe", $"\"{filePath}\"");
             }
         }
-        
+
         public string? SaveProjectFile()
         {
             var saveFileDialog = new SaveFileDialog
@@ -79,15 +81,15 @@ namespace VideoCutTool.WPF.Services
                 DefaultExt = "vct",
                 FileName = "新项目.vct"
             };
-            
-            if (saveFileDialog.ShowDialog() == true)
+
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 return saveFileDialog.FileName;
             }
-            
+
             return null;
         }
-        
+
         public string? OpenProjectFile()
         {
             var openFileDialog = new OpenFileDialog
@@ -96,12 +98,12 @@ namespace VideoCutTool.WPF.Services
                 Filter = "视频剪辑项目文件|*.vct|所有文件|*.*",
                 Multiselect = false
             };
-            
-            if (openFileDialog.ShowDialog() == true)
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 return openFileDialog.FileName;
             }
-            
+
             return null;
         }
     }

@@ -5,28 +5,41 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Extensions.DependencyInjection;
-using VideoCutTool.WPF.Models;
-using VideoCutTool.WPF.Services;
+using Microsoft.Extensions.Logging;
+using VideoCutTool.Core.Models;
+using VideoCutTool.Core.Interfaces;
+using VideoCutTool.WPF.ViewModels;
 using Path = System.IO.Path;
 
 namespace VideoCutTool.WPF.Views.Controls
 {
     public partial class TimelineControl : UserControl
     {
-        private readonly IVideoService _videoService;
-        private double _zoomLevel = 100.0;
-        private double _pixelsPerSecond = 50.0; // 基础缩放比例
-        private VideoInfo? _currentVideo;
+        private readonly ILogger<TimelineControl> _logger;
+        private TimelineControlViewModel _viewModel;
+        
+        // UI元素集合
         private List<Image> _thumbnails = new();
         private List<Rectangle> _waveformBars = new();
+        private List<Line> _splitPoints = new();
+        
+        // 播放头拖拽相关
+        private bool _isDraggingPlayhead = false;
+        private Point _dragStartPoint;
+        private double _dragStartX;
+        
+        // 事件
+        public event Action<TimeSpan>? PlayheadPositionChanged;
+        public event Action<TimeSpan>? SplitPointRequested;
         
         public static readonly DependencyProperty ZoomLevelProperty =
             DependencyProperty.Register("ZoomLevel", typeof(double), typeof(TimelineControl), 
-                new PropertyMetadata(100.0, OnZoomLevelChanged));
+                new PropertyMetadata(1.0, OnZoomLevelChanged));
         
         public double ZoomLevel
         {
@@ -38,52 +51,119 @@ namespace VideoCutTool.WPF.Views.Controls
         {
             InitializeComponent();
             
-            // 获取视频服务
-            var serviceProvider = ((App)Application.Current).Services;
-            _videoService = serviceProvider.GetRequiredService<IVideoService>();
+            _logger = ((App)Application.Current).Services.GetRequiredService<ILogger<TimelineControl>>();
+            _viewModel = ((App)Application.Current).Services.GetRequiredService<TimelineControlViewModel>();
+            
+            _logger.LogInformation("TimelineControl 初始化开始");
             
             // 初始化事件处理
             TimelineScrollViewer.ScrollChanged += TimelineScrollViewer_ScrollChanged;
+            
+            // 绑定ViewModel事件
+            _viewModel.PlayheadPositionChanged += OnViewModelPlayheadPositionChanged;
+            _viewModel.SplitPointRequested += OnViewModelSplitPointRequested;
+            _viewModel.TimelineContentChanged += OnViewModelTimelineContentChanged;
+            
+            // 设置初始缩放
+            ZoomSlider.Value = _viewModel.ZoomLevel;
+            
+            _logger.LogInformation("TimelineControl 初始化完成");
         }
         
         private static void OnZoomLevelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is TimelineControl control)
             {
-                control.UpdateZoom();
+                control._logger.LogInformation($"ZoomLevel属性改变: {e.OldValue} -> {e.NewValue}");
+                control._viewModel.ZoomLevel = (double)e.NewValue;
             }
+        }
+        
+        // ViewModel事件处理
+        private void OnViewModelPlayheadPositionChanged(TimeSpan time)
+        {
+            _logger.LogDebug($"ViewModel播放头位置改变: {time:mm\\:ss\\.f}");
+            PlayheadPositionChanged?.Invoke(time);
+        }
+        
+        private void OnViewModelSplitPointRequested(TimeSpan time)
+        {
+            _logger.LogInformation($"ViewModel请求切分点: {time:mm\\:ss\\.f}");
+            SplitPointRequested?.Invoke(time);
+        }
+        
+        private async void OnViewModelTimelineContentChanged()
+        {
+            _logger.LogInformation("ViewModel时间轴内容改变，开始重新生成UI");
+            await RegenerateTimelineContent();
         }
         
         public async Task LoadVideo(VideoInfo videoInfo)
         {
-            _currentVideo = videoInfo;
+            _logger.LogInformation($"开始加载视频: {videoInfo.FilePath}");
             
-            // 更新视频信息
-            VideoInfoText.Text = $"{Path.GetFileName(videoInfo.FilePath)} {videoInfo.Duration:hh\\:mm\\:ss}";
+            try
+            {
+                // 设置ViewModel的当前视频
+                _viewModel.CurrentVideo = videoInfo;
+                
+                // 更新Grid宽度
+                TimelineGrid.Width = _viewModel.TotalWidth;
+                
+                _logger.LogInformation($"视频加载完成，时间轴宽度: {_viewModel.TotalWidth}px");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "加载视频时发生错误");
+            }
+        }
+        
+        private async Task RegenerateTimelineContent()
+        {
+            _logger.LogInformation("开始重新生成时间轴内容");
             
-            // 计算时间轴宽度
-            var totalWidth = videoInfo.Duration.TotalSeconds * _pixelsPerSecond * (_zoomLevel / 100.0);
-            TimelineCanvas.Width = Math.Max(2000, totalWidth);
-            
-            // 生成时间标尺
-            GenerateTimeRuler();
-            
-            // 生成缩略图
-            await GenerateThumbnails();
-            
-            // 生成音频波形
-            await GenerateAudioWaveform();
+            try
+            {
+                // 更新Grid宽度
+                TimelineGrid.Width = _viewModel.TotalWidth;
+                
+                // 生成时间标尺
+                GenerateTimeRuler();
+                
+                // 生成缩略图
+                await GenerateThumbnails();
+                
+                // 生成音频波形
+                await GenerateAudioWaveform();
+                
+                // 清除切分点
+                ClearSplitPoints();
+                
+                _logger.LogInformation("时间轴内容重新生成完成");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "重新生成时间轴内容时发生错误");
+            }
         }
         
         private void GenerateTimeRuler()
         {
+            _logger.LogDebug("开始生成时间标尺");
+            
             RulerCanvas.Children.Clear();
             
-            if (_currentVideo == null) return;
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("生成时间标尺时CurrentVideo为null");
+                return;
+            }
             
-            var duration = _currentVideo.Duration.TotalSeconds;
+            var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
             var interval = GetTimeInterval(duration);
-            var pixelsPerSecond = _pixelsPerSecond * (_zoomLevel / 100.0);
+            var pixelsPerSecond = _viewModel.PixelsPerSecond;
+            
+            _logger.LogDebug($"时间标尺参数: 时长={duration}s, 间隔={interval}s, 像素/秒={pixelsPerSecond}");
             
             for (double time = 0; time <= duration; time += interval)
             {
@@ -114,63 +194,105 @@ namespace VideoCutTool.WPF.Views.Controls
                 Canvas.SetTop(timeText, 5);
                 RulerCanvas.Children.Add(timeText);
             }
+            
+            _logger.LogDebug($"时间标尺生成完成，共{Math.Ceiling(duration / interval)}个刻度");
         }
         
         private double GetTimeInterval(double duration)
         {
             // 根据缩放级别和视频时长调整时间间隔
-            if (_zoomLevel >= 200) return 5; // 5秒间隔
-            if (_zoomLevel >= 100) return 10; // 10秒间隔
-            if (_zoomLevel >= 50) return 30; // 30秒间隔
+            if (_viewModel.ZoomLevel >= 200) return 5; // 5秒间隔
+            if (_viewModel.ZoomLevel >= 100) return 10; // 10秒间隔
+            if (_viewModel.ZoomLevel >= 50) return 30; // 30秒间隔
             return 60; // 60秒间隔
         }
         
         private async Task GenerateThumbnails()
         {
+            _logger.LogInformation("开始生成缩略图");
+            
             VideoTrackCanvas.Children.Clear();
             _thumbnails.Clear();
             
-            if (_currentVideo == null) return;
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("生成缩略图时CurrentVideo为null");
+                return;
+            }
             
-            var duration = _currentVideo.Duration.TotalSeconds;
-            var pixelsPerSecond = _pixelsPerSecond * (_zoomLevel / 100.0);
-            var thumbnailInterval = Math.Max(1, 10 / (_zoomLevel / 100.0)); // 根据缩放调整缩略图间隔
+            var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
+            var thumbnailWidth = 50.0; // 固定缩略图宽度
+            var thumbnailHeight = 30.0;
+            var thumbnailTimeInterval = _viewModel.ThumbnailTimeInterval;
             
-            for (double time = 0; time < duration; time += thumbnailInterval)
+            _logger.LogDebug($"缩略图参数: 时长={duration}s, 间隔={thumbnailTimeInterval:F2}s, 宽度={thumbnailWidth}px");
+            
+            // 生成缩略图，每张缩略图的右边框对应的时间就是下一张缩略图的生成时间
+            double currentTime = 0;
+            double currentX = 0;
+            int thumbnailCount = 0;
+            
+            while (currentTime < duration)
             {
                 try
                 {
-                    // 生成缩略图
-                    var thumbnailPath = await _videoService.GenerateThumbnailAsync(_currentVideo.FilePath, time);
+                    // 从ViewModel获取缩略图路径
+                    var thumbnailPath = await _viewModel.GetThumbnailPathAsync(currentTime);
                     
-                    if (File.Exists(thumbnailPath))
+                    if (!string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath))
                     {
                         var image = new Image
                         {
                             Source = new BitmapImage(new Uri(thumbnailPath)),
-                            Width = thumbnailInterval * pixelsPerSecond - 2,
-                            Height = 76,
+                            Width = thumbnailWidth,
+                            Height = thumbnailHeight,
                             Stretch = Stretch.UniformToFill
                         };
                         
-                        Canvas.SetLeft(image, time * pixelsPerSecond + 1);
+                        Canvas.SetLeft(image, currentX);
                         Canvas.SetTop(image, 2);
                         
                         VideoTrackCanvas.Children.Add(image);
                         _thumbnails.Add(image);
+                        thumbnailCount++;
+                    }
+                    else
+                    {
+                        // 创建占位符
+                        var placeholder = new Border
+                        {
+                            Background = Brushes.Gray,
+                            Width = thumbnailWidth,
+                            Height = thumbnailHeight,
+                            Child = new TextBlock
+                            {
+                                Text = $"{currentTime:F1}s",
+                                Foreground = Brushes.White,
+                                HorizontalAlignment = HorizontalAlignment.Center,
+                                VerticalAlignment = VerticalAlignment.Center,
+                                FontSize = 8
+                            }
+                        };
+                        
+                        Canvas.SetLeft(placeholder, currentX);
+                        Canvas.SetTop(placeholder, 2);
+                        
+                        VideoTrackCanvas.Children.Add(placeholder);
                     }
                 }
                 catch (Exception ex)
                 {
-                    // 如果缩略图生成失败，创建一个占位符
+                    _logger.LogError(ex, $"生成缩略图失败: {currentTime:F1}s");
+                    
+                    // 创建错误占位符
                     var placeholder = new Border
                     {
-                        Background = Brushes.Gray,
-                        Width = thumbnailInterval * pixelsPerSecond - 2,
-                        Height = 76,
+                        Background = Brushes.Red,
+                        Width = thumbnailWidth,
+                        Height = thumbnailHeight,
                         Child = new TextBlock
                         {
-                            Text = $"{time:F1}s",
+                            Text = $"错误",
                             Foreground = Brushes.White,
                             HorizontalAlignment = HorizontalAlignment.Center,
                             VerticalAlignment = VerticalAlignment.Center,
@@ -178,28 +300,45 @@ namespace VideoCutTool.WPF.Views.Controls
                         }
                     };
                     
-                    Canvas.SetLeft(placeholder, time * pixelsPerSecond + 1);
+                    Canvas.SetLeft(placeholder, currentX);
                     Canvas.SetTop(placeholder, 2);
                     
                     VideoTrackCanvas.Children.Add(placeholder);
                 }
+                
+                // 移动到下一个位置
+                currentX += thumbnailWidth;
+                currentTime += thumbnailTimeInterval;
             }
+            
+            _logger.LogInformation($"缩略图生成完成，共{thumbnailCount}个有效缩略图");
         }
+        
+
         
         private async Task GenerateAudioWaveform()
         {
+            _logger.LogInformation("开始生成音频波形");
+            
             AudioTrackCanvas.Children.Clear();
             _waveformBars.Clear();
             
-            if (_currentVideo == null) return;
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("生成音频波形时CurrentVideo为null");
+                return;
+            }
             
             try
             {
                 // 生成音频波形数据
-                var waveformData = await _videoService.GenerateAudioWaveformAsync(_currentVideo.FilePath);
+                var videoService = ((App)Application.Current).Services.GetRequiredService<IVideoService>();
+                var waveformData = await videoService.GenerateAudioWaveformAsync(_viewModel.CurrentVideo.FilePath);
                 
-                var pixelsPerSecond = _pixelsPerSecond * (_zoomLevel / 100.0);
+                var pixelsPerSecond = _viewModel.PixelsPerSecond;
                 var barWidth = Math.Max(1, pixelsPerSecond / 10); // 每0.1秒一个波形条
+                
+                _logger.LogDebug($"音频波形参数: 像素/秒={pixelsPerSecond}, 条宽度={barWidth}px, 数据点={waveformData.Count}");
                 
                 for (int i = 0; i < waveformData.Count; i++)
                 {
@@ -222,12 +361,16 @@ namespace VideoCutTool.WPF.Views.Controls
                     AudioTrackCanvas.Children.Add(bar);
                     _waveformBars.Add(bar);
                 }
+                
+                _logger.LogInformation($"音频波形生成完成，共{waveformData.Count}个波形条");
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "生成音频波形失败，使用模拟波形");
+                
                 // 如果波形生成失败，创建模拟波形
-                var duration = _currentVideo.Duration.TotalSeconds;
-                var pixelsPerSecond = _pixelsPerSecond * (_zoomLevel / 100.0);
+                var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
+                var pixelsPerSecond = _viewModel.PixelsPerSecond;
                 var barWidth = Math.Max(1, pixelsPerSecond / 10);
                 
                 var random = new Random(42); // 固定种子以获得一致的模拟波形
@@ -253,18 +396,29 @@ namespace VideoCutTool.WPF.Views.Controls
                     AudioTrackCanvas.Children.Add(bar);
                     _waveformBars.Add(bar);
                 }
+                
+                _logger.LogInformation($"模拟音频波形生成完成");
             }
         }
         
         public void UpdatePlayhead(TimeSpan currentTime)
         {
-            if (_currentVideo == null) return;
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("更新播放头时CurrentVideo为null");
+                return;
+            }
             
-            var pixelsPerSecond = _pixelsPerSecond * (_zoomLevel / 100.0);
+            _logger.LogDebug($"更新播放头位置: {currentTime:mm\\:ss\\.f}");
+            
+            var pixelsPerSecond = _viewModel.PixelsPerSecond;
             var x = currentTime.TotalSeconds * pixelsPerSecond;
             
             PlayheadLine.X1 = x;
             PlayheadLine.X2 = x;
+            
+            // 更新播放头块的位置
+            Canvas.SetLeft(PlayheadTopBlock, x - 6);
             
             // 确保播放头在可视区域内
             if (x > TimelineScrollViewer.HorizontalOffset + TimelineScrollViewer.ViewportWidth - 50)
@@ -273,53 +427,188 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
         
-        private void UpdateZoom()
+        // 播放头拖拽事件处理
+        private void Playhead_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_currentVideo == null) return;
-            
-            var oldZoom = _zoomLevel;
-            _zoomLevel = ZoomLevel;
-            
-            // 重新计算时间轴宽度
-            var totalWidth = _currentVideo.Duration.TotalSeconds * _pixelsPerSecond * (_zoomLevel / 100.0);
-            TimelineCanvas.Width = Math.Max(2000, totalWidth);
-            
-            // 重新生成时间轴内容
-            GenerateTimeRuler();
-            _ = GenerateThumbnails();
-            _ = GenerateAudioWaveform();
-            
-            // 调整播放头位置
-            if (DataContext is ViewModels.MainWindowViewModel viewModel)
+            _isDraggingPlayhead = true;
+            _dragStartPoint = e.GetPosition(PlayheadCanvas);
+            _dragStartX = PlayheadLine.X1;
+            PlayheadCanvas.CaptureMouse();
+            e.Handled = true;
+        }
+        
+        private void Playhead_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingPlayhead && _viewModel.CurrentVideo != null)
             {
-                UpdatePlayhead(viewModel.CurrentTime);
+                var currentPoint = e.GetPosition(PlayheadCanvas);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var newX = _dragStartX + deltaX;
+                
+                // 限制在时间轴范围内
+                var maxX = _viewModel.CurrentVideo.Duration.TotalSeconds * _viewModel.PixelsPerSecond;
+                newX = Math.Max(0, Math.Min(maxX, newX));
+                
+                // 更新播放头位置
+                PlayheadLine.X1 = newX;
+                PlayheadLine.X2 = newX;
+                Canvas.SetLeft(PlayheadTopBlock, newX - 6);
+                
+                // 计算对应的时间
+                var pixelsPerSecond = _viewModel.PixelsPerSecond;
+                var time = TimeSpan.FromSeconds(newX / pixelsPerSecond);
+                
+                // 通过ViewModel更新
+                _viewModel.UpdatePlayheadPosition(time);
+            }
+        }
+        
+        private void Playhead_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingPlayhead)
+            {
+                _isDraggingPlayhead = false;
+                PlayheadCanvas.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+        
+        // 切分点功能
+        public void AddSplitPoint(TimeSpan time)
+        {
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("添加切分点时CurrentVideo为null");
+                return;
+            }
+            
+            _logger.LogInformation($"添加切分点: {time:mm\\:ss\\.f}");
+            
+            var pixelsPerSecond = _viewModel.PixelsPerSecond;
+            var x = time.TotalSeconds * pixelsPerSecond;
+            
+            var splitLine = new Line
+            {
+                X1 = x,
+                Y1 = 0,
+                X2 = x,
+                Y2 = 200,
+                Stroke = Brushes.Red,
+                StrokeThickness = 2,
+                StrokeDashArray = new DoubleCollection { 5, 5 }
+            };
+            
+            Canvas.SetLeft(splitLine, 0);
+            SplitPointsCanvas.Children.Add(splitLine);
+            _splitPoints.Add(splitLine);
+            
+            // 通过ViewModel触发切分事件
+            _viewModel.RequestSplitPoint(time);
+        }
+        
+        public void ClearSplitPoints()
+        {
+            SplitPointsCanvas.Children.Clear();
+            _splitPoints.Clear();
+        }
+        
+        private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            // 只在值真正改变且不是初始化时记录日志
+            if (e.OldValue != e.NewValue && e.OldValue != 0)
+            {
+                _logger.LogDebug($"缩放滑块值改变: {e.OldValue} -> {e.NewValue}");
+            }
+            
+            if (_viewModel != null)
+            {
+                _viewModel.ZoomLevel = e.NewValue;
             }
         }
         
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
-            ZoomLevel = Math.Min(400, ZoomLevel + 25);
+            // 计算下一个整十倍缩放级别
+            var currentZoom = ZoomSlider.Value;
+            var nextZoom = currentZoom switch
+            {
+                1 => 10,
+                10 => 20,
+                20 => 30,
+                30 => 40,
+                40 => 50,
+                50 => 60,
+                60 => 70,
+                70 => 80,
+                80 => 90,
+                90 => 100,
+                _ => Math.Min(100, currentZoom + 10)
+            };
+            
+            _logger.LogInformation($"放大按钮点击: {currentZoom} -> {nextZoom}");
+            ZoomSlider.Value = nextZoom;
         }
         
         private void ZoomOut_Click(object sender, RoutedEventArgs e)
         {
-            ZoomLevel = Math.Max(25, ZoomLevel - 25);
+            // 计算上一个整十倍缩放级别
+            var currentZoom = ZoomSlider.Value;
+            var prevZoom = currentZoom switch
+            {
+                100 => 90,
+                90 => 80,
+                80 => 70,
+                70 => 60,
+                60 => 50,
+                50 => 40,
+                40 => 30,
+                30 => 20,
+                20 => 10,
+                10 => 1,
+                _ => Math.Max(1, currentZoom - 10)
+            };
+            
+            _logger.LogInformation($"缩小按钮点击: {currentZoom} -> {prevZoom}");
+            ZoomSlider.Value = prevZoom;
         }
         
         private void FitToWindow_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentVideo == null) return;
+            if (_viewModel.CurrentVideo == null)
+            {
+                _logger.LogWarning("适应窗口时CurrentVideo为null");
+                return;
+            }
             
             var availableWidth = TimelineScrollViewer.ActualWidth - 50;
-            var duration = _currentVideo.Duration.TotalSeconds;
-            var optimalZoom = (availableWidth / duration) / _pixelsPerSecond * 100;
+            var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
             
-            ZoomLevel = Math.Max(25, Math.Min(400, optimalZoom));
+            // 计算最优缩放倍数：可用宽度 / (时长 × 4.6)
+            var optimalZoom = availableWidth / (duration * 4.6);
+            
+            // 找到最接近的整十倍缩放级别
+            var zoomLevels = new[] { 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+            var bestZoom = zoomLevels.OrderBy(z => Math.Abs(z - optimalZoom)).First();
+            
+            _logger.LogInformation($"适应窗口: 可用宽度={availableWidth}px, 时长={duration}s, 最优缩放={optimalZoom:F1}, 选择缩放={bestZoom}");
+            
+            ZoomSlider.Value = bestZoom;
         }
         
         private void TimelineScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            // 可以在这里添加滚动事件处理逻辑
+            // 处理滚动事件
+            if (e.HorizontalChange != 0)
+            {
+                _logger.LogDebug($"水平滚动: 变化={e.HorizontalChange:F1}, 新位置={e.HorizontalOffset:F1}, 最大滚动={TimelineScrollViewer.ScrollableWidth:F1}");
+                
+                // 计算当前显示的时间范围
+                var pixelsPerSecond = _viewModel.PixelsPerSecond;
+                var startTime = TimeSpan.FromSeconds(e.HorizontalOffset / pixelsPerSecond);
+                var endTime = TimeSpan.FromSeconds((e.HorizontalOffset + TimelineScrollViewer.ViewportWidth) / pixelsPerSecond);
+                
+                _logger.LogDebug($"当前显示时间范围: {startTime:mm\\:ss} - {endTime:mm\\:ss}");
+            }
         }
     }
 } 

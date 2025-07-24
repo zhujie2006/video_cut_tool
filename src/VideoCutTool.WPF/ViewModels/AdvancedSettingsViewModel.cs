@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
-using VideoCutTool.WPF.Models;
+using VideoCutTool.Core.Models;
 using Serilog;
 
 namespace VideoCutTool.WPF.ViewModels
@@ -65,7 +65,7 @@ namespace VideoCutTool.WPF.ViewModels
         private int _keyframeInterval = 2;
 
         [ObservableProperty]
-        private bool _audioEnabled = true;
+        private int _audioChannels = 1;
 
         [ObservableProperty]
         private bool _useGPUAcceleration = false;
@@ -86,8 +86,8 @@ namespace VideoCutTool.WPF.ViewModels
             
             SelectedVideoCodec = settings.VideoCodec;
             SelectedAudioCodec = settings.AudioCodec;
-            Bitrate = settings.Bitrate;
-            AudioEnabled = settings.AudioEnabled;
+            Bitrate = settings.VideoBitrate;
+            AudioChannels = settings.AudioChannels;
         }
 
         public void ResetToDefaults()
@@ -101,7 +101,7 @@ namespace VideoCutTool.WPF.ViewModels
             SelectedHardwareAcceleration = "无";
             Bitrate = 5000;
             KeyframeInterval = 2;
-            AudioEnabled = true;
+            AudioChannels = 1;
             UseGPUAcceleration = false;
             ThreadCount = Environment.ProcessorCount;
         }
@@ -113,8 +113,8 @@ namespace VideoCutTool.WPF.ViewModels
             // 更新原始设置对象
             _originalSettings.VideoCodec = SelectedVideoCodec;
             _originalSettings.AudioCodec = SelectedAudioCodec;
-            _originalSettings.Bitrate = Bitrate;
-            _originalSettings.AudioEnabled = AudioEnabled;
+            _originalSettings.VideoBitrate = Bitrate;
+            _originalSettings.AudioChannels = AudioChannels;
         }
 
         public ExportSettings GetUpdatedSettings()
