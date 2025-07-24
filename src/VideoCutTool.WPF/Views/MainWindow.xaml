@@ -4,6 +4,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:VideoCutTool.WPF.Converters"
         mc:Ignorable="d"
         Title="视频剪辑工具 - Video Cut Tool"
         Width="1200" Height="800"
@@ -97,6 +98,12 @@
         
         <!-- 分隔线颜色 -->
         <SolidColorBrush x:Key="SeparatorBrush" Color="#364153" />
+        
+        <!-- 转换器 -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        
+        <!-- 音量转换器 -->
+        <local:VolumeConverter x:Key="VolumeConverter" />
     </Window.Resources>
     
     <Grid>
@@ -241,10 +248,21 @@
                 <!-- 视频播放器 -->
                 <Border Grid.Row="0" Background="Black" BorderBrush="Gray" BorderThickness="1" Margin="4" CornerRadius="4">
                     <Grid>
+                        <!-- MediaElement 视频播放器 -->
+                        <MediaElement x:Name="VideoPlayer" 
+                                     Source="{Binding VideoSource}" 
+                                     LoadedBehavior="Manual"
+                                     UnloadedBehavior="Stop"
+                                     ScrubbingEnabled="True"
+                                     MediaOpened="VideoPlayer_MediaOpened"
+                                     MediaEnded="VideoPlayer_MediaEnded"
+                                     Volume="{Binding Volume, Converter={StaticResource VolumeConverter}}"
+                                     Stretch="Uniform" />
+                        
                         <!-- 视频信息覆盖层 -->
                         <Border Background="#80000000" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
                                 Margin="8" Padding="8,4" CornerRadius="4">
-                            <TextBlock Text="{Binding SelectedFrameRate, StringFormat='1920x1080 | {0}'}" 
+                            <TextBlock Text="{Binding VideoInfo.Resolution}" 
                                        Foreground="White" FontSize="12" />
                         </Border>
                         
@@ -253,6 +271,16 @@
                                 Margin="8" Padding="8,4" CornerRadius="4">
                             <TextBlock Text="{Binding TimeDisplay}" 
                                        Foreground="White" FontSize="14" FontWeight="Medium" />
+                        </Border>
+                        
+                        <!-- 播放状态指示器 -->
+                        <Border Background="#80000000" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                Margin="8" Padding="12,8" CornerRadius="8" 
+                                Visibility="{Binding IsPlaying, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Play" Width="24" Height="24" Foreground="White" />
+                                <TextBlock Text="播放中" Foreground="White" FontSize="16" FontWeight="Medium" Margin="8,0,0,0" />
+                            </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
@@ -426,7 +454,7 @@
 
         <!-- 底部状态栏 -->
         <materialDesign:ColorZone Grid.Row="4" Mode="PrimaryLight" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}">
-            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
         </materialDesign:ColorZone>
     </Grid>
     

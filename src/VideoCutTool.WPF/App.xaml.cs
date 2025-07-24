@@ -5,6 +5,7 @@ using Serilog;
 using System.IO;
 using System.Windows;
 using VideoCutTool.WPF.ViewModels;
+using VideoCutTool.WPF.Services;
 
 namespace VideoCutTool.WPF
 {
@@ -36,7 +37,8 @@ namespace VideoCutTool.WPF
                     })
                     .UseSerilog((context, config) =>
                     {
-                        config.WriteTo.File("logs/videocuttool-.log", rollingInterval: RollingInterval.Day)
+                        config.MinimumLevel.Debug()
+                              .WriteTo.File("logs/videocuttool-.log", rollingInterval: RollingInterval.Day)
                               .WriteTo.Debug();
                     })
                     .Build();
@@ -59,6 +61,10 @@ namespace VideoCutTool.WPF
         {
             // Register configuration
             services.AddSingleton(configuration);
+
+            // Register services
+            services.AddSingleton<IVideoService, VideoService>();
+            services.AddSingleton<IFileDialogService, FileDialogService>();
 
             // Register ViewModels
             services.AddTransient<MainWindowViewModel>();
