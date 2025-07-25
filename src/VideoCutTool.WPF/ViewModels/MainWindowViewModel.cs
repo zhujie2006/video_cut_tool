@@ -1,13 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Collections.ObjectModel;
-using System.Windows.Input;
-using System.IO;
-using System.Windows.Threading;
-using VideoCutTool.Core.Models;
-using VideoCutTool.Core.Interfaces;
-using VideoCutTool.WPF.Views;
 using Serilog;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows.Input;
+using System.Windows.Threading;
+using VideoCutTool.Core.Constant;
+using VideoCutTool.Core.Interfaces;
+using VideoCutTool.Core.Models;
+using VideoCutTool.WPF.Views;
 
 namespace VideoCutTool.WPF.ViewModels
 {
@@ -168,10 +169,6 @@ namespace VideoCutTool.WPF.ViewModels
                 System.Diagnostics.Debug.WriteLine($"视频导入错误: {ex}");
             }
         }
-
-        
-
-        
 
         [RelayCommand]
         private void PlayPause()
@@ -412,9 +409,8 @@ namespace VideoCutTool.WPF.ViewModels
                 var exportSettings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
-                    OutputQuality = int.Parse(SelectedExportQuality),
-                    FrameRate = int.Parse(SelectedFrameRate),
-                    //OutputPath = outputFolder
+                    OutputQuality = ParsQuality(SelectedExportQuality),
+                    FrameRate = ParsFrameRate(SelectedFrameRate),
                 };
                 
                 _logger.Information("导出设置 - 格式: {Format}, 质量: {Quality}, 帧率: {FrameRate}", 
@@ -608,6 +604,17 @@ namespace VideoCutTool.WPF.ViewModels
                 segmentCount, oldOutputDuration, ProjectInfo.OutputDuration, ProjectInfo.EstimatedSize);
         }
 
+        public void SetCurrentTime(TimeSpan time)
+        {
+            CurrentTime = time;
+        }
+
+        public TimeSpan GetCurrentTime()
+        {
+            var time = CurrentTime;
+            return time;
+        }
+
         #endregion
 
         #endregion
@@ -698,6 +705,47 @@ namespace VideoCutTool.WPF.ViewModels
             catch
             {
                 // 忽略保存错误
+            }
+        }
+
+        private int ParsQuality(string strQuality)
+        {
+            if (string.IsNullOrEmpty(strQuality))
+            {
+                return VideoFormatConst.QualityMediumValue;
+            }
+
+            switch (strQuality)
+            {
+                case VideoFormatConst.QualityHigh:
+                    return VideoFormatConst.QualityHighValue;
+                case VideoFormatConst.QualityMedium:
+                    return VideoFormatConst.QualityMediumValue;
+                case VideoFormatConst.QualityLow:
+                    return VideoFormatConst.QualityLowValue;
+                default:
+                    return VideoFormatConst.QualityMediumValue;
+            }
+        }
+
+        private int ParsFrameRate(string strFrameRate)
+        {
+            if (string.IsNullOrEmpty(strFrameRate))
+            {
+                return VideoFormatConst.MediumFrameRateValue;
+            }
+            switch (strFrameRate)
+            {
+                case VideoFormatConst.LowFrameRate:
+                    return VideoFormatConst.LowFrameRateValue;
+                case VideoFormatConst.MediumFrameRate:
+                    return VideoFormatConst.MediumFrameRateValue;
+                case VideoFormatConst.HighFrameRate:
+                    return VideoFormatConst.HighFrameRateValue;
+                case VideoFormatConst.MaxFrameRate:
+                    return VideoFormatConst.MaxFrameRateValue;
+                default:
+                    return VideoFormatConst.MediumFrameRateValue;
             }
         }
 

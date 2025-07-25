@@ -18,5 +18,12 @@ namespace VideoCutTool.Core.Interfaces
         /// 通知界面更新项目信息
         /// </summary>
         public void UpdateProjectInfo();
+
+        /// <summary>
+        /// 设置当前时间
+        /// </summary>
+        public void SetCurrentTime(TimeSpan time);
+
+        public TimeSpan GetCurrentTime();
     }
 }

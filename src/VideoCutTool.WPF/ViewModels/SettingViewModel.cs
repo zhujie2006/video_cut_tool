@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VideoCutTool.Core.Constant;
 
 namespace VideoCutTool.WPF.ViewModels
 {
@@ -14,7 +15,7 @@ namespace VideoCutTool.WPF.ViewModels
         /// 导出的质量选项
         /// </summary>
         [ObservableProperty]
-        private ObservableCollection<string> _exportQualities = new() { "高质量 (1080p)", "中等质量 (720p)", "低质量 (480p)" };
+        private ObservableCollection<string> _exportQualities = new() { VideoFormatConst.QualityHigh, VideoFormatConst.QualityMedium, VideoFormatConst.QualityLow };
 
         /// <summary>
         /// 导出的格式选项
@@ -26,7 +27,7 @@ namespace VideoCutTool.WPF.ViewModels
         /// 导出的帧率选项
         /// </summary>
         [ObservableProperty]
-        private ObservableCollection<string> _frameRates = new() { "15 fps", "30 fps", "45 fps", "60 fps" };
+        private ObservableCollection<string> _frameRates = new() { VideoFormatConst.LowFrameRate, VideoFormatConst.MediumFrameRate, VideoFormatConst.HighFrameRate, VideoFormatConst.MaxFrameRate };
 
         /// <summary>
         /// 4.6像素/秒，1分钟=276像素(1x 时)

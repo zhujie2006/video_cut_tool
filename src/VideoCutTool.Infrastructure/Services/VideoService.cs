@@ -3,6 +3,7 @@ using System.IO;
 using VideoCutTool.Core.Interfaces;
 using VideoCutTool.Core.Models;
 using Serilog;
+using VideoCutTool.Core.Constant;
 
 namespace VideoCutTool.Infrastructure.Services
 {
@@ -474,11 +475,11 @@ namespace VideoCutTool.Infrastructure.Services
             var args = $"-i \"{inputPath}\" -ss {startTime.TotalSeconds:F3} -t {duration.TotalSeconds:F3}";
             
             // 根据质量设置编码参数
-            if (settings.OutputQuality >= 85)
+            if (settings.OutputQuality >= VideoFormatConst.QualityHighValue)
             {
                 args += " -vf scale=1920:1080 -c:v libx264 -crf 18";
             }
-            else if (settings.OutputQuality >= 60)
+            else if (settings.OutputQuality >= VideoFormatConst.QualityMediumValue)
             {
                 args += " -vf scale=1280:720 -c:v libx264 -crf 23";
             }

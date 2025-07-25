@@ -15,50 +15,8 @@
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResize"
         KeyDown="Window_KeyDown">
-    
-    <Window.Resources>
-        <!-- 自定义Card样式 -->
-        <Style x:Key="CustomCardStyle" TargetType="materialDesign:Card">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-        </Style>
 
-        <!-- 自定义 ColorZone 样式 -->
-        <Style x:Key="CustomColorZoneStyle" TargetType="materialDesign:ColorZone">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-        </Style>
-        
-        <!-- 自定义播放控制按钮样式 -->
-        <Style x:Key="PlayControlButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="4" />
-            <Setter Property="MinWidth" Value="24" />
-            <Setter Property="MinHeight" Value="24" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#20FFFFFF" />
-                    <Setter Property="Foreground" Value="White" />
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#40FFFFFF" />
-                    <Setter Property="Foreground" Value="White" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        
-        <!-- 自定义ComboBox样式 -->
-        <Style x:Key="CustomComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#0A0A0A" />
-            <Setter Property="BorderBrush" Value="#CCCCCC" />
-            <Setter Property="MinWidth" Value="80"/>
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,6" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        
+    <Window.Resources>
         <!-- 最近导出项目样式 -->
         <Style x:Key="RecentExportItemStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
@@ -74,26 +32,8 @@
             </Style.Triggers>
         </Style>
 
-        <!-- 分隔线颜色 -->
-        <SolidColorBrush x:Key="SeparatorBrush" Color="#364153" />
-        
-        <!-- 选中背景颜色 -->
-        <SolidColorBrush x:Key="SelectedBackgroundBrush" Color="#2D5A2D" />
-        
-        <!-- 转换器 -->
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        
         <!-- 音量转换器 -->
         <local:VolumeConverter x:Key="VolumeConverter" />
-        
-        <!-- 选中背景转换器 -->
-        <local:SelectedBackgroundConverter x:Key="SelectedBackgroundConverter" />
-        
-        <!-- 调整大小边框样式 -->
-        <Style x:Key="ResizeBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Cursor" Value="SizeAll" />
-        </Style>
     </Window.Resources>
     
     <Grid>
@@ -139,7 +79,8 @@
                 </Grid.RowDefinitions>
 
                 <!-- 视频播放器 -->
-                <Border Grid.Row="0" Background="Black" BorderBrush="Gray" BorderThickness="1" Margin="4" CornerRadius="4">
+                <Border Grid.Row="0" Background="Black" BorderBrush="Gray" BorderThickness="1"
+                        Margin="6,10,6,2" CornerRadius="4">
                     <Grid>
                         <!-- MediaElement 视频播放器 -->
                         <MediaElement x:Name="VideoPlayer" 
@@ -154,7 +95,7 @@
                         
                         <!-- 视频信息覆盖层 -->
                         <Border Background="#80000000" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
-                                Margin="8" Padding="8,4" CornerRadius="4">
+                                Margin="10,16" Padding="8,4" CornerRadius="4">
                             <TextBlock Text="{Binding VideoInfo.Resolution}" 
                                        Foreground="White" FontSize="12" />
                         </Border>
@@ -162,7 +103,7 @@
                 </Border>
 
                 <!-- 播放控制 -->
-                <materialDesign:Card Grid.Row="1" Margin="4" Padding="2" Style="{StaticResource CustomCardStyle}">
+                <materialDesign:Card Grid.Row="1" Margin="16,0" Padding="2" Style="{StaticResource CustomCardStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -171,7 +112,7 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- 播放控制按钮 -->
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Button Command="{Binding PreviousFrameCommand}" Style="{StaticResource PlayControlButtonStyle}">
                                 <materialDesign:PackIcon Kind="SkipPrevious" Width="20" Height="20" />
                             </Button>
@@ -184,7 +125,7 @@
                         </StackPanel>
 
                         <!-- 时间显示 -->
-                        <TextBlock Grid.Column="1" Text="{Binding TimeDisplay}"
+                        <TextBlock Grid.Column="0" Text="{Binding TimeDisplay}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" 
                                     Foreground="{StaticResource PrimaryTextBrush}" 
                                    FontSize="14" FontWeight="Medium" />
@@ -192,7 +133,7 @@
                         <!-- 音量控制 -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                             <materialDesign:PackIcon Kind="VolumeHigh" Width="16" Height="16" Margin="0,0,4,0" Foreground="{StaticResource PrimaryTextBrush}" />
-                            <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" Width="80" Margin="16,0"/>
+                            <Slider Value="{Binding Volume}" Minimum="0" Maximum="100" Width="80" Margin="16,0,10,0"/>
                         </StackPanel>
                     </Grid>
                 </materialDesign:Card>
@@ -223,7 +164,8 @@
                             Command="{Binding SaveProjectCommand}" 
                             Background="{StaticResource SecondaryButtonBrush}" Foreground="{StaticResource ButtonTextBrush}"/>
 
-                    <Border Grid.Row="3" Height="2" Background="#ccc" VerticalAlignment="Top" Margin="2,16,2,0"/>
+
+                    <Border Grid.Row="3" Height="2" Background="{StaticResource SeparatorBrush}" VerticalAlignment="Top" Margin="2,16,2,0"/>
 
 
                     <!-- 导出设置 -->
@@ -255,7 +197,7 @@
                                 Background="{StaticResource PrimaryButtonBrush}" Foreground="{StaticResource PrimaryTextBrush}" />
                     </StackPanel>
 
-                    <Border Grid.Row="5" Height="2" Background="#ccc" VerticalAlignment="Top" Margin="2,16,2,0"/>
+                    <Border Grid.Row="5" Height="2" Background="{StaticResource SeparatorBrush}" VerticalAlignment="Top" Margin="2,16,2,0"/>
                     <!-- 项目信息 -->
                     <StackPanel Grid.Row="6" Margin="16">
                         <StackPanel Margin="0,0,0,8">
@@ -274,7 +216,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Grid.Row="7" Height="2" Background="#ccc" VerticalAlignment="Top" Margin="2,16,2,0"/>
+                    <Border Grid.Row="7" Height="2" Background="{StaticResource SeparatorBrush}" VerticalAlignment="Top" Margin="2,16,2,0"/>
 
                     <!-- 最近导出 -->
                     <StackPanel Grid.Row="8" Margin="16">

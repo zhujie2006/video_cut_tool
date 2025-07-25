@@ -2,72 +2,157 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
 
-    <!-- 主窗口样式 -->
-    <Style x:Key="MainWindowStyle" TargetType="Window">
-        <Setter Property="Background" Value="{DynamicResource MaterialDesignPaper}" />
-        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-        <Setter Property="FontFamily" Value="{DynamicResource MaterialDesignFont}" />
-        <Setter Property="WindowStartupLocation" Value="CenterScreen" />
-        <Setter Property="MinWidth" Value="1200" />
-        <Setter Property="MinHeight" Value="800" />
-        <Setter Property="Width" Value="1400" />
-        <Setter Property="Height" Value="900" />
+    <!-- 自定义颜色资源 -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E2939" />
+    <SolidColorBrush x:Key="PrimaryButtonBrush" Color="#E7000B" />
+    <SolidColorBrush x:Key="SecondaryButtonBrush" Color="White" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="White" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#99A1AF" />
+    <SolidColorBrush x:Key="ButtonTextBrush" Color="#0A0A0A" />
+    <!-- 分隔线颜色 -->
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#364153" />
+    <!-- 选中背景颜色 -->
+    <SolidColorBrush x:Key="SelectedBackgroundBrush" Color="#2D5A2D" />
+    
+    <!-- 自定义Card样式 -->
+    <Style x:Key="CustomCardStyle" TargetType="materialDesign:Card">
+        <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
     </Style>
 
-    <!-- 视频播放器容器样式 -->
-    <Style x:Key="VideoPlayerContainerStyle" TargetType="Border">
-        <Setter Property="Background" Value="Black" />
-        <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Margin" Value="8" />
+    <!-- 自定义 ColorZone 样式 -->
+    <Style x:Key="CustomColorZoneStyle" TargetType="materialDesign:ColorZone">
+        <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
     </Style>
 
-    <!-- 时间轴样式 -->
-    <Style x:Key="TimelineStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource MaterialDesignBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesignDivider}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Margin" Value="8" />
-        <Setter Property="Padding" Value="12" />
-    </Style>
-
-    <!-- 工具按钮样式 -->
-    <Style x:Key="ToolButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-        <Setter Property="Margin" Value="4" />
-        <Setter Property="Padding" Value="12,8" />
-        <Setter Property="MinWidth" Value="80" />
-    </Style>
-
-    <!-- 导出按钮样式 -->
-    <Style x:Key="ExportButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-        <Setter Property="Background" Value="{DynamicResource MaterialDesignRed}" />
+    <!-- 自定义播放控制按钮样式 -->
+    <Style x:Key="PlayControlButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="White" />
-        <Setter Property="Margin" Value="8" />
-        <Setter Property="Padding" Value="16,12" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="MinWidth" Value="24" />
+        <Setter Property="MinHeight" Value="24" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#20FFFFFF" />
+                <Setter Property="Foreground" Value="White" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#40FFFFFF" />
+                <Setter Property="Foreground" Value="White" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
-    <!-- 进度条样式 -->
-    <Style x:Key="VideoProgressStyle" TargetType="ProgressBar" BasedOn="{StaticResource MaterialDesignLinearProgressBar}">
-        <Setter Property="Height" Value="6" />
-        <Setter Property="Margin" Value="8,4" />
+    <!-- 自定义ComboBox样式 -->
+    <Style x:Key="CustomComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Foreground" Value="#0A0A0A" />
+        <Setter Property="BorderBrush" Value="#CCCCCC" />
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <!-- 文本块样式 -->
-    <Style x:Key="InfoTextStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBodyLight}" />
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="Margin" Value="4" />
+    <!-- 工具栏按钮样式 -->
+    <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="MinWidth" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Foreground" Value="White" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#20FFFFFF" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#40FFFFFF" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
-    <!-- 标题文本样式 -->
-    <Style x:Key="TitleTextStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="FontWeight" Value="Medium" />
-        <Setter Property="Margin" Value="8,4" />
+    <!-- 自定义滚动条样式 -->
+    <Style x:Key="ModernScrollBarStyle" TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="MinHeight" Value="4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid>
+                        <Track x:Name="PART_Track" Grid.Row="0" IsDirectionReversed="true">
+                            <Track.Thumb>
+                                <Thumb x:Name="Thumb" Background="#60FFFFFF" 
+                                   BorderBrush="Transparent" BorderThickness="0"
+                                   MinWidth="8" MinHeight="4">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="#80FFFFFF" 
+                                                CornerRadius="4,2,4,2" 
+                                                Margin="1" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
+    <!-- 自定义ScrollViewer样式 -->
+    <Style x:Key="ModernScrollViewerStyle" TargetType="ScrollViewer">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <ScrollContentPresenter Grid.Column="0" Grid.Row="0" 
+                                          CanContentScroll="{TemplateBinding CanContentScroll}" 
+                                          CanHorizontallyScroll="False" 
+                                          CanVerticallyScroll="False" 
+                                          ContentTemplate="{TemplateBinding ContentTemplate}" 
+                                          Content="{TemplateBinding Content}" 
+                                          Grid.ColumnSpan="2" 
+                                          Grid.RowSpan="2" 
+                                          KeyboardNavigation.DirectionalNavigation="Local" />
+
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" 
+                              Grid.Column="0" Grid.Row="1" 
+                              Style="{StaticResource ModernScrollBarStyle}"
+                              Orientation="Horizontal" 
+                              Maximum="{TemplateBinding ScrollViewer.ScrollableWidth}" 
+                              Minimum="0" 
+                              Value="{TemplateBinding ScrollViewer.HorizontalOffset}" 
+                              ViewportSize="{TemplateBinding ScrollViewer.ViewportWidth}" 
+                              Visibility="Visible" />
+
+                        <ScrollBar x:Name="PART_VerticalScrollBar" 
+                              Grid.Column="1" Grid.Row="0" 
+                              Style="{StaticResource ModernScrollBarStyle}"
+                              Maximum="{TemplateBinding ScrollViewer.ScrollableHeight}" 
+                              Minimum="0" 
+                              Value="{TemplateBinding ScrollViewer.VerticalOffset}" 
+                              ViewportSize="{TemplateBinding ScrollViewer.ViewportHeight}" 
+                              Visibility="{TemplateBinding ScrollViewer.ComputedVerticalScrollBarVisibility}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary> 

@@ -21,10 +21,7 @@ namespace VideoCutTool.WPF.ViewModels
 
         // 视频信息
         private VideoInfo? _currentVideo;
-        private double _zoomLevel = 1.0; // 缩放倍数：1, 10, 20, 30, ..., 100
-        private TimeSpan _currentTime = TimeSpan.Zero;
-        private double _totalWidth = 1000; // 时间轴总宽度
-
+       
 
         private readonly Stack<Action> _undoStack = new();
         private readonly Stack<Action> _redoStack = new();
@@ -46,6 +43,9 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         #region 属性
+
+        [ObservableProperty]
+        private double _zoomLevel = 1.0; // 缩放倍数：1, 10, 20, 30, ..., 100
 
         // 新增属性
         [ObservableProperty]
@@ -82,44 +82,9 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
         
-        public double ZoomLevel
-        {
-            get => _zoomLevel;
-            set
-            {
-                if (SetProperty(ref _zoomLevel, value))
-                {
-                    _logger.Debug($"设置缩放级别: {value}");
-                    _ = UpdateTimelineContentAsync();
-                }
-            }
-        }
         
-        public TimeSpan CurrentTime
-        {
-            get => _currentTime;
-            set
-            {
-                if (SetProperty(ref _currentTime, value))
-                {
-                    _logger.Debug($"设置当前时间: {value:mm\\:ss\\.f}");
-                    PlayheadPositionChanged?.Invoke(value);
-                }
-            }
-        }
-        
-        public double TotalWidth
-        {
-            get => _totalWidth;
-            set
-            {
-                if (SetProperty(ref _totalWidth, value))
-                {
-                    _logger.Debug($"设置时间轴总宽度: {value}px");
-                    TimelineContentChanged?.Invoke();
-                }
-            }
-        }
+        [ObservableProperty]
+        private double _totalWidth = 1000.0;
 
         #region 计算属性
 
@@ -229,7 +194,7 @@ namespace VideoCutTool.WPF.ViewModels
         public void UpdatePlayheadPosition(TimeSpan time)
         {
             _logger.Debug($"更新播放头位置: {time:mm\\:ss\\.f}");
-            CurrentTime = time;
+            PlayheadPositionChanged?.Invoke(time);
         }
         
         public void RequestSplitPoint(TimeSpan time)
@@ -482,7 +447,8 @@ namespace VideoCutTool.WPF.ViewModels
                 return;
             }
 
-            RemoveSplitPoint(CurrentTime);
+            var currentTime = UINotifier.GetCurrentTime();
+            RemoveSplitPoint(currentTime);
             UpdateCommandStates();
         }
 
@@ -502,7 +468,7 @@ namespace VideoCutTool.WPF.ViewModels
             SelectedSegment = segment;
 
             // 跳转到片段开始时间
-            CurrentTime = segment.StartTime;
+            UINotifier.SetCurrentTime(segment.StartTime);
 
             UpdateCommandStates();
             UINotifier.NotifyStatusMessage($"已选择片段: {segment.Name}");
@@ -629,7 +595,7 @@ namespace VideoCutTool.WPF.ViewModels
                 return;
             }
 
-            var curTime = CurrentTime;
+            var curTime = UINotifier.GetCurrentTime();
             // 在当前位置添加切分点
             AddSplitPoint(curTime);
 
@@ -646,25 +612,6 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
 
-        #endregion
-
-        #region INotifyPropertyChanged
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-        
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-        
         #endregion
     }
 } 

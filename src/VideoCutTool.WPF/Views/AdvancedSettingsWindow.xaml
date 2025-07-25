@@ -5,33 +5,16 @@
         Title="高级设置"
         Width="500" Height="600"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource AppBackgroundBrush}"
+        Background="{DynamicResource AppBackgroundBrush}"
         FontFamily="{DynamicResource MaterialDesignFont}"
         ResizeMode="CanResize">
     
     <Window.Resources>
-        <!-- 颜色资源 -->
-        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1A1A1A" />
-        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#CCCCCC" />
-        <SolidColorBrush x:Key="PrimaryButtonBrush" Color="#2196F3" />
-        <SolidColorBrush x:Key="SecondaryButtonBrush" Color="#424242" />
-        <SolidColorBrush x:Key="ButtonTextBrush" Color="#FFFFFF" />
-        
-        <!-- 自定义Card样式 -->
-        <Style x:Key="CustomCardStyle" TargetType="materialDesign:Card">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-        </Style>
-        
-        <!-- 自定义ComboBox样式 -->
-        <Style x:Key="CustomComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="#0A0A0A" />
-            <Setter Property="BorderBrush" Value="#CCCCCC" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,6" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/VideoCutTool.WPF;component/Resources/Styles/CommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>        
     </Window.Resources>
     
     <Grid Margin="16">
