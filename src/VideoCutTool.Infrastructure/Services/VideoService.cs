@@ -203,7 +203,8 @@ namespace VideoCutTool.Infrastructure.Services
             try
             {
                 // 使用FFmpeg提取音频并分析波形
-                var arguments = "-af \"volumedetect,ametadata=mode=print:file=-\" -f null -";
+                // 使用astats滤镜来获取音频统计信息，包括RMS（均方根）值
+                var arguments = "-af \"aresample=8000,asetnsamples=n=1024,astats=metadata=1:reset=1,metadata=mode=print:file=-\" -f null -";
                 
                 _logger.Debug("FFmpeg音频分析命令: {Arguments}", arguments);
                 
@@ -361,6 +362,8 @@ namespace VideoCutTool.Infrastructure.Services
                 {
                     var width = videoStreamMatch.Groups[1].Value;
                     var height = videoStreamMatch.Groups[2].Value;
+                    videoInfo.Width = float.Parse(width);
+                    videoInfo.Height = float.Parse(height);
                     videoInfo.Resolution = $"{width}x{height}";
                     _logger.Debug("解析分辨率成功: {Resolution}", videoInfo.Resolution);
                 }
@@ -371,6 +374,8 @@ namespace VideoCutTool.Infrastructure.Services
                     var heightMatch = System.Text.RegularExpressions.Regex.Match(jsonOutput, "\"height\":\\s*(\\d+)");
                     if (widthMatch.Success && heightMatch.Success)
                     {
+                        videoInfo.Width = float.Parse(widthMatch.Groups[1].Value);
+                        videoInfo.Height = float.Parse(heightMatch.Groups[1].Value);
                         videoInfo.Resolution = $"{widthMatch.Groups[1].Value}x{heightMatch.Groups[1].Value}";
                         _logger.Debug("解析分辨率成功(简单匹配): {Resolution}", videoInfo.Resolution);
                     }
@@ -526,27 +531,61 @@ namespace VideoCutTool.Infrastructure.Services
             
             try
             {
-                // 简单的音频波形解析（这里可以根据需要实现更复杂的解析逻辑）
+                _logger.Debug("开始解析音频波形数据，输出长度: {Length}", ffmpegOutput.Length);
+                
                 var lines = ffmpegOutput.Split('\n');
-                var random = new Random(42); // 固定种子以获得一致的结果
+                var rmsValues = new List<double>();
                 
                 foreach (var line in lines)
                 {
-                    if (line.Contains("volume"))
+                    // 解析astats输出的RMS值
+                    // 格式: RMS level dB: -XX.XX
+                    if (line.Contains("RMS level dB:"))
                     {
-                        // 提取音量信息并转换为波形数据
-                        var volume = random.NextDouble() * 0.8 + 0.2; // 模拟音量数据
-                        waveform.Add(volume);
+                        var match = System.Text.RegularExpressions.Regex.Match(line, @"RMS level dB:\s*([-\d.]+)");
+                        if (match.Success && double.TryParse(match.Groups[1].Value, out var rmsDb))
+                        {
+                            // 将dB值转换为0-1之间的振幅值
+                            // dB范围通常是-60到0，转换为0-1
+                            var amplitude = Math.Max(0, Math.Min(1, (rmsDb + 60) / 60));
+                            rmsValues.Add(amplitude);
+                        }
+                    }
+                    // 解析峰值电平
+                    else if (line.Contains("Peak level dB:"))
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(line, @"Peak level dB:\s*([-\d.]+)");
+                        if (match.Success && double.TryParse(match.Groups[1].Value, out var peakDb))
+                        {
+                            // 将dB值转换为0-1之间的振幅值
+                            var amplitude = Math.Max(0, Math.Min(1, (peakDb + 60) / 60));
+                            rmsValues.Add(amplitude);
+                        }
                     }
                 }
                 
-                // 如果解析失败，生成模拟数据
-                if (waveform.Count == 0)
-                {
-                    waveform = GenerateSimulatedWaveform();
-                }
+                _logger.Debug("解析到 {Count} 个音频数据点", rmsValues.Count);
                 
-                return waveform;
+                // 如果成功解析到数据，使用解析的数据
+                if (rmsValues.Count > 0)
+                {
+                    // 将数据点扩展到合适的时间轴长度
+                    var targetLength = 1000; // 目标波形长度
+                    var step = Math.Max(1, rmsValues.Count / targetLength);
+                    
+                    for (int i = 0; i < targetLength && i * step < rmsValues.Count; i++)
+                    {
+                        waveform.Add(rmsValues[i * step]);
+                    }
+                    
+                    _logger.Debug("生成波形数据点: {Count}", waveform.Count);
+                    return waveform;
+                }
+                else
+                {
+                    _logger.Warning("未能解析到有效的音频数据，使用模拟数据");
+                    return GenerateSimulatedWaveform();
+                }
             }
             catch (Exception ex)
             {

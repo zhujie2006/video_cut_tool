@@ -33,8 +33,14 @@ namespace VideoCutTool.WPF.Views
             
             // 获取主窗口的ViewModel
             var serviceProvider = ((App)Application.Current).Services;
-            DataContext = serviceProvider.GetRequiredService<MainWindowViewModel>();
-            
+            var vm = serviceProvider.GetRequiredService<MainWindowViewModel>();
+            vm.SettingViewModel = new SettingViewModel();
+            var subVm = serviceProvider.GetRequiredService<TimelineControlViewModel>();
+
+            subVm.UINotifier = vm;
+            vm.TimelineViewModel = subVm;
+
+            DataContext = vm;
             // 订阅ViewModel的播放状态变化
             if (DataContext is MainWindowViewModel viewModel)
             {
@@ -61,7 +67,7 @@ namespace VideoCutTool.WPF.Views
                 if (Math.Abs((newTime - oldTime).TotalMilliseconds) > 50) // 50ms的容差
                 {
                     viewModel.CurrentTime = newTime;
-                    System.Diagnostics.Debug.WriteLine($"时间同步: {oldTime} -> {newTime}");
+                    //System.Diagnostics.Debug.WriteLine($"时间同步: {oldTime} -> {newTime}");
                 }
             }
         }
@@ -97,9 +103,6 @@ namespace VideoCutTool.WPF.Views
             {
                 await TimelineControl.LoadVideo(videoInfo);
                 
-                // 连接TimelineControl的事件
-                TimelineControl.PlayheadPositionChanged += OnTimelinePlayheadPositionChanged;
-                TimelineControl.SplitPointRequested += OnTimelineSplitPointRequested;
             }
             catch (Exception ex)
             {
@@ -114,14 +117,53 @@ namespace VideoCutTool.WPF.Views
                 viewModel.OnPlayheadPositionChanged(newTime);
             }
         }
-        
-        private void OnTimelineSplitPointRequested(TimeSpan splitTime)
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
             {
-                viewModel.OnSplitPointRequested(splitTime);
+                switch (e.Key)
+                {
+                    case Key.Space:
+                        // Space键播放/暂停
+                        if (viewModel.VideoInfo != null)
+                        {
+                            viewModel.PlayPauseCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.S:
+                        // S键添加切分点
+                        if (viewModel.TimelineViewModel != null)
+                        {
+                            viewModel.TimelineViewModel.SplitVideoCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.Delete:
+                        // Delete键删除当前时间点的切分点
+                        if (viewModel.TimelineViewModel != null)
+                        {
+                            viewModel.TimelineViewModel.RemoveSplitPointAtCurrentTimeCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.X:
+                        // Ctrl+X清空所有切分点
+                        if (Keyboard.Modifiers == ModifierKeys.Control)
+                        {
+                            if (viewModel.TimelineViewModel != null)
+                            {
+                                viewModel.TimelineViewModel.ClearSegmentCommand.Execute(null);
+                                e.Handled = true;
+                            }
+                        }
+                        break;
+                }
             }
         }
+        
+
         
         private void UpdateMediaElementPlayback(MainWindowViewModel viewModel)
         {

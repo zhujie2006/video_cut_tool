@@ -1,70 +1,101 @@
 using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace VideoCutTool.Core.Models
 {
     /// <summary>
     /// 项目信息模型
     /// </summary>
-    public class ProjectInfo
+    public partial class ProjectInfo : ObservableObject
     {
         /// <summary>
         /// 项目名称
         /// </summary>
         [JsonPropertyName("name")]
-        public string Name { get; set; } = "新项目";
+        [ObservableProperty]
+        private string _name = "新项目";
+
+        /// <summary>
+        /// 项目文件路径
+        /// </summary>
+        [JsonPropertyName("projectFilePath")]
+        [ObservableProperty]
+        private string _projectFilePath = string.Empty;
 
         /// <summary>
         /// 时长
         /// </summary>
         [JsonPropertyName("duration")]
-        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
-
-        public TimeSpan OutputDuration { get; set; } = TimeSpan.Zero;
-
-        public string EstimatedSize = "";
-
-        public int SegmentCount { get; set; } = 0;
+        [ObservableProperty]
+        private TimeSpan _duration = TimeSpan.Zero;
 
         /// <summary>
-        /// 项目描述
+        /// 输出时长
         /// </summary>
-        [JsonPropertyName("description")]
-        public string Description { get; set; } = string.Empty;
+        [ObservableProperty]
+        private TimeSpan _outputDuration = TimeSpan.Zero;
+
+        /// <summary>
+        /// 预估大小
+        /// </summary>
+        [JsonPropertyName("estimatedSize")]
+        [ObservableProperty]
+        private string _estimatedSize = "";
+
+        /// <summary>
+        /// 视频信息
+        /// </summary>
+        [JsonPropertyName("videoInfo")]
+        [ObservableProperty]
+        private VideoInfo? _videoInfo;
+
+        /// <summary>
+        /// 音量
+        /// </summary>
+        [JsonPropertyName("volume")]
+        [ObservableProperty]
+        private double _volume = 50.0; // 音量，范围0.0到100.0
+
+        /// <summary>
+        /// 时间轴片段列表
+        /// </summary>
+        [JsonPropertyName("timelineSegments")]
+        [ObservableProperty]
+        private List<TimelineSegment> _timelineSegments = new();
+
+        /// <summary>
+        /// 切分点列表
+        /// </summary>
+        [JsonPropertyName("timelineSegments")]
+        [ObservableProperty]
+        private List<TimeSpan> _splitPoints = new();
+
+        /// <summary>
+        /// 缩略图缓存路径
+        /// </summary>
+        [JsonPropertyName("thumbnailCachePath")]
+        [ObservableProperty]
+        private string _thumbnailCachePath = string.Empty;
+
+        /// <summary>
+        /// 导出设置
+        /// </summary>
+        [JsonPropertyName("exportSettings")]
+        [ObservableProperty]
+        private ExportSettings _exportSettings = new();
 
         /// <summary>
         /// 创建日期
         /// </summary>
         [JsonPropertyName("createdDate")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        [ObservableProperty]
+        private DateTime _createdDate = DateTime.Now;
 
         /// <summary>
         /// 最后修改日期
         /// </summary>
         [JsonPropertyName("lastModifiedDate")]
-        public DateTime LastModifiedDate { get; set; } = DateTime.Now;
-
-        /// <summary>
-        /// 项目版本
-        /// </summary>
-        [JsonPropertyName("version")]
-        public string Version { get; set; } = "1.0.0";
-
-        /// <summary>
-        /// 作者
-        /// </summary>
-        [JsonPropertyName("author")]
-        public string Author { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 标签
-        /// </summary>
-        [JsonPropertyName("tags")]
-        public List<string> Tags { get; set; } = new();
-
-        /// <summary>
-        /// 项目设置
-        /// </summary>
-        [JsonPropertyName("settings")]
-        public Dictionary<string, object> Settings { get; set; } = new();
+        [ObservableProperty]
+        private DateTime _lastModifiedDate = DateTime.Now;
     }
 }

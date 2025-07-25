@@ -18,13 +18,13 @@ namespace VideoCutTool.Infrastructure.Services
             _recentProjectsPath = Path.Combine(appDataPath, "recent_projects.json");
         }
 
-        public async Task<bool> SaveProjectAsync(ProjectFile projectFile, string filePath)
+        public async Task<bool> SaveProjectAsync(ProjectInfo projectFile, string filePath)
         {
             try
             {
                 _logger.Information("开始保存项目到: {FilePath}", filePath);
                 
-                projectFile.LastSavedAt = DateTime.Now;
+                projectFile.LastModifiedDate = DateTime.Now;
                 
                 var options = new JsonSerializerOptions
                 {
@@ -48,7 +48,7 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
 
-        public async Task<ProjectFile> LoadProjectAsync(string filePath)
+        public async Task<ProjectInfo> LoadProjectAsync(string filePath)
         {
             try
             {
@@ -66,7 +66,7 @@ namespace VideoCutTool.Infrastructure.Services
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
                 
-                var project = JsonSerializer.Deserialize<ProjectFile>(json, options);
+                var project = JsonSerializer.Deserialize<ProjectInfo>(json, options);
                 
                 if (project != null)
                 {
@@ -84,19 +84,19 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
 
-        public async Task<List<ProjectFile>> GetRecentProjectsAsync()
+        public async Task<List<ProjectInfo>> GetRecentProjectsAsync()
         {
             try
             {
                 if (!File.Exists(_recentProjectsPath))
                 {
-                    return new List<ProjectFile>();
+                    return new List<ProjectInfo>();
                 }
                 
                 var json = await File.ReadAllTextAsync(_recentProjectsPath);
                 var recentPaths = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
                 
-                var recentProjects = new List<ProjectFile>();
+                var recentProjects = new List<ProjectInfo>();
                 foreach (var path in recentPaths.Take(10)) // 只保留最近10个项目
                 {
                     if (File.Exists(path))
@@ -114,7 +114,7 @@ namespace VideoCutTool.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.Error(ex, "获取最近项目列表失败");
-                return new List<ProjectFile>();
+                return new List<ProjectInfo>();
             }
         }
 
@@ -164,7 +164,7 @@ namespace VideoCutTool.Infrastructure.Services
                 }
 
                 var json = await File.ReadAllTextAsync(filePath);
-                var project = JsonSerializer.Deserialize<ProjectFile>(json);
+                var project = JsonSerializer.Deserialize<ProjectInfo>(json);
                 return project != null;
             }
             catch (Exception ex)
@@ -174,30 +174,5 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
 
-        public async Task<ProjectFile> CreateNewProjectAsync(string videoPath)
-        {
-            try
-            {
-                var projectFile = new ProjectFile
-                {
-                    ProjectInfo = new ProjectInfo
-                    {
-                        Name = Path.GetFileNameWithoutExtension(videoPath),
-                        CreatedDate = DateTime.Now,
-                        LastModifiedDate = DateTime.Now
-                    },
-                    CreatedAt = DateTime.Now,
-                    LastSavedAt = DateTime.Now,
-                    ProjectFilePath = string.Empty
-                };
-
-                return projectFile;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "创建新项目失败: {VideoPath}", videoPath);
-                throw;
-            }
-        }
     }
 } 
