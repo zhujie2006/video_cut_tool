@@ -136,10 +136,11 @@ namespace VideoCutTool.WPF.ViewModels
                 
                 // 初始化项目信息
                 _logger.Debug("初始化项目信息");
+                ProjectInfo.Reset();
                 ProjectInfo.Name = VideoInfo.Name;
                 ProjectInfo.Duration = VideoInfo.Duration;
                  // 复制当前时间轴片段
-                ProjectInfo.OutputDuration = TimeSpan.Zero;
+                ProjectInfo.OutputDuration = VideoInfo.Duration;
                 ProjectInfo.EstimatedSize = "0 MB";
                 ProjectInfo.VideoInfo = VideoInfo;
 
@@ -154,9 +155,6 @@ namespace VideoCutTool.WPF.ViewModels
                 StatusMessage = $"已导入视频: {VideoInfo.Name} ({VideoInfo.Resolution}, {VideoInfo.Duration:mm\\:ss})";
                 UpdateTimeDisplay();
                 UpdatePreciseTimeDisplay();
-
-                // 导入的时候不用管，导出的时候从 TimelineViewModel 获取
-                // ProjectInfo.TimelineSegments = TimelineSegments.ToList();
 
                 _logger.Information("视频导入流程完成成功");
             }
@@ -409,8 +407,8 @@ namespace VideoCutTool.WPF.ViewModels
                 var exportSettings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
-                    OutputQuality = ParsQuality(SelectedExportQuality),
-                    FrameRate = ParsFrameRate(SelectedFrameRate),
+                    OutputQuality = ParseQuality(SelectedExportQuality),
+                    FrameRate = ParseFrameRate(SelectedFrameRate),
                 };
                 
                 _logger.Information("导出设置 - 格式: {Format}, 质量: {Quality}, 帧率: {FrameRate}", 
@@ -488,8 +486,8 @@ namespace VideoCutTool.WPF.ViewModels
                 var settings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
-                    OutputQuality = int.Parse(SelectedExportQuality),
-                    FrameRate = int.Parse(SelectedFrameRate),
+                    OutputQuality = ParseQuality(SelectedExportQuality),
+                    FrameRate = ParseFrameRate(SelectedFrameRate),
                     VideoCodec = "h264",
                     AudioCodec = "aac",
                     VideoBitrate = 5000,
@@ -542,19 +540,6 @@ namespace VideoCutTool.WPF.ViewModels
 
         #region 公共方法
 
-        // 播放头位置改变事件处理
-        public void OnPlayheadPositionChanged(TimeSpan newTime)
-        {
-            CurrentTime = newTime;
-            
-            // 如果正在播放，先暂停
-            if (IsPlaying)
-            {
-                IsPlaying = false;
-                PlayPauseIcon = "Play";
-            }
-        }
-
         #region 实现 IMainPageNotifyHandler
 
         /// <summary>
@@ -586,8 +571,8 @@ namespace VideoCutTool.WPF.ViewModels
             ProjectInfo.ExportSettings = new ExportSettings
             {
                 Format = SelectedExportFormat,
-                OutputQuality = int.Parse(SelectedExportQuality),
-                FrameRate = int.Parse(SelectedFrameRate)
+                OutputQuality = ParseQuality(SelectedExportQuality),
+                FrameRate = ParseFrameRate(SelectedFrameRate)
             };
 
             var segmentCount = ProjectInfo.TimelineSegments.Count;
@@ -607,6 +592,13 @@ namespace VideoCutTool.WPF.ViewModels
         public void SetCurrentTime(TimeSpan time)
         {
             CurrentTime = time;
+
+            // 如果正在播放，先暂停
+            if (IsPlaying)
+            {
+                IsPlaying = false;
+                PlayPauseIcon = "Play";
+            }
         }
 
         public TimeSpan GetCurrentTime()
@@ -708,7 +700,7 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        private int ParsQuality(string strQuality)
+        private int ParseQuality(string strQuality)
         {
             if (string.IsNullOrEmpty(strQuality))
             {
@@ -728,7 +720,7 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        private int ParsFrameRate(string strFrameRate)
+        private int ParseFrameRate(string strFrameRate)
         {
             if (string.IsNullOrEmpty(strFrameRate))
             {

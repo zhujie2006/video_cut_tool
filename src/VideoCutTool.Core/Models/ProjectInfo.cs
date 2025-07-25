@@ -97,5 +97,25 @@ namespace VideoCutTool.Core.Models
         [JsonPropertyName("lastModifiedDate")]
         [ObservableProperty]
         private DateTime _lastModifiedDate = DateTime.Now;
+
+        /// <summary>
+        /// 重置数据
+        /// </summary>
+        public void Reset()
+        {
+            Name = "新项目";
+            ProjectFilePath = string.Empty;
+            Duration = TimeSpan.Zero;
+            OutputDuration = TimeSpan.Zero;
+            EstimatedSize = string.Empty;
+            VideoInfo = null;
+            Volume = 50.0;
+            TimelineSegments.Clear();
+            SplitPoints.Clear();
+            ThumbnailCachePath = string.Empty;
+            ExportSettings = new ExportSettings();
+            CreatedDate = DateTime.Now;
+            LastModifiedDate = DateTime.Now;
+        }
     }
 }

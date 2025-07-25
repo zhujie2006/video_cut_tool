@@ -19,10 +19,12 @@ using Path = System.IO.Path;
 
 namespace VideoCutTool.WPF.Views.Controls
 {
-    public partial class TimelineControl : UserControl
+    public partial class TimelineControl : UserControl, ITimelineControlNotifyHandler
     {
+        #region Fields
+
         private readonly ILogger<TimelineControl> _logger;
-        private TimelineControlViewModel _viewModel;
+        private TimelineControlViewModel? _viewModel;
 
         // UI元素集合
         private List<Image> _thumbnails = new();
@@ -34,12 +36,16 @@ namespace VideoCutTool.WPF.Views.Controls
         private Point _dragStartPoint;
         private double _dragStartX;
 
+        #endregion
+
+        #region 计算属性
+
         // 公共属性，用于外部检查拖拽状态
         public bool IsDraggingPlayhead => _isDraggingPlayhead;
 
-        // 事件
-        public event Action<TimeSpan>? PlayheadPositionChanged;
-        public event Action<TimeSpan>? SplitPointRequested;
+        #endregion
+
+        #region 依赖属性
 
         public static readonly DependencyProperty ZoomLevelProperty =
             DependencyProperty.Register("ZoomLevel", typeof(double), typeof(TimelineControl),
@@ -50,6 +56,23 @@ namespace VideoCutTool.WPF.Views.Controls
             get => (double)GetValue(ZoomLevelProperty);
             set => SetValue(ZoomLevelProperty, value);
         }
+
+
+        private static void OnZoomLevelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is TimelineControl control)
+            {
+                control._logger.LogInformation($"ZoomLevel属性改变: {e.OldValue} -> {e.NewValue}");
+                if (!control._viewModel.IsTimelineViewModelValid())
+                {
+                    control._logger.LogWarning("ViewModel未初始化，无法设置ZoomLevel");
+                    return;
+                }
+                control._viewModel.ZoomLevel = (double)e.NewValue;
+            }
+        }
+
+        #endregion
 
         public TimelineControl()
         {
@@ -68,38 +91,7 @@ namespace VideoCutTool.WPF.Views.Controls
             _logger.LogInformation("TimelineControl 初始化完成");
         }
 
-        private static void OnZoomLevelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (d is TimelineControl control)
-            {
-                control._logger.LogInformation($"ZoomLevel属性改变: {e.OldValue} -> {e.NewValue}");
-                if (!control._viewModel.IsTimelineViewModelValid())
-                {
-                    control._logger.LogWarning("ViewModel未初始化，无法设置ZoomLevel");
-                    return;
-                }
-                control._viewModel.ZoomLevel = (double)e.NewValue;
-            }
-        }
-
         // ViewModel事件处理
-        private void OnViewModelPlayheadPositionChanged(TimeSpan time)
-        {
-            _logger.LogDebug($"ViewModel播放头位置改变: {time:mm\\:ss\\.f}");
-            PlayheadPositionChanged?.Invoke(time);
-        }
-
-        private void OnViewModelSplitPointRequested(TimeSpan time)
-        {
-            _logger.LogInformation($"ViewModel请求切分点: {time:mm\\:ss\\.f}");
-            SplitPointRequested?.Invoke(time);
-        }
-
-        private async void OnViewModelTimelineContentChanged()
-        {
-            _logger.LogInformation("ViewModel时间轴内容改变，开始重新生成UI");
-            await RegenerateTimelineContent();
-        }
 
         public async Task LoadVideo(VideoInfo videoInfo)
         {
@@ -119,6 +111,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 // 更新Grid宽度
                 TimelineGrid.Width = _viewModel.TotalWidth;
 
+                await _viewModel.UpdateContentAsync();
+
                 _logger.LogInformation($"视频加载完成，时间轴宽度: {_viewModel.TotalWidth}px");
             }
             catch (Exception ex)
@@ -126,6 +120,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 _logger.LogError(ex, "加载视频时发生错误");
             }
         }
+
+        #region 私有方法
 
         private async Task RegenerateTimelineContent()
         {
@@ -151,8 +147,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 // 生成音频波形
                 await GenerateAudioWaveform();
 
-                // 清除切分点
-                ClearSplitPoints();
+                // 生成切分点
+                await GenerateSplitPoints();
 
                 _logger.LogInformation("时间轴内容重新生成完成");
             }
@@ -329,8 +325,6 @@ namespace VideoCutTool.WPF.Views.Controls
             _logger.LogInformation($"缩略图生成完成，共{thumbnailCount}个有效缩略图");
         }
 
-
-
         private async Task GenerateAudioWaveform()
         {
             _logger.LogInformation("开始生成音频波形");
@@ -436,6 +430,32 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
+        private async Task GenerateSplitPoints()
+        {
+            _logger.LogInformation("开始生成切分点");
+
+            if (!_viewModel.IsTimelineViewModelValid())
+            {
+                _logger.LogWarning("生成切分点时CurrentVideo为null");
+                return;
+            }
+
+            _logger.LogInformation($"更新切分点显示: {_viewModel.SplitPoints.Count} 个切分点");
+
+            // 清空现有切分点
+            ClearSplitPoints();
+
+            // 添加新的切分点
+            foreach (var time in _viewModel.SplitPoints)
+            {
+                AddSplitPoint(time);
+            }
+        }
+
+        #endregion
+
+        #region 公共方法
+
         public void UpdatePlayhead(TimeSpan currentTime)
         {
             if (!_viewModel.IsTimelineViewModelValid())
@@ -476,89 +496,6 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
-        // 播放头拖拽事件处理
-        private void Playhead_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (!_viewModel.IsTimelineViewModelValid())
-            {
-                _logger.LogWarning("播放头鼠标按下事件时, ViewModel 未初始化，不需要处理");
-                return;
-            }
-
-            _logger.LogInformation($"播放头鼠标按下事件触发 - 位置: {e.GetPosition(PlayheadCanvas)}, 按钮: {e.ChangedButton}");
-
-            _isDraggingPlayhead = true;
-            _dragStartPoint = e.GetPosition(PlayheadCanvas);
-            _dragStartX = PlayheadLine.X1;
-
-            _logger.LogInformation($"开始拖拽 - 起始点: {_dragStartPoint}, 起始X: {_dragStartX}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
-
-            PlayheadCanvas.CaptureMouse();
-            e.Handled = true;
-
-            _logger.LogInformation("播放头拖拽开始，鼠标已捕获");
-        }
-
-        private void Playhead_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (!_viewModel.IsTimelineViewModelValid())
-            {
-                _logger.LogWarning("播放头鼠标移动事件时, ViewModel 未初始化，不需要处理");
-                return;
-            }
-
-            _logger.LogDebug($"播放头鼠标移动事件触发 - 拖拽状态: {_isDraggingPlayhead}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
-
-            if (_isDraggingPlayhead && _viewModel.CurrentVideo != null)
-            {
-                var currentPoint = e.GetPosition(PlayheadCanvas);
-                var deltaX = currentPoint.X - _dragStartPoint.X;
-                var newX = _dragStartX + deltaX;
-
-                // 限制在时间轴范围内
-                var maxX = _viewModel.CurrentVideo.Duration.TotalSeconds * _viewModel.PixelsPerSecond;
-                newX = Math.Max(0, Math.Min(maxX, newX));
-
-                _logger.LogDebug($"拖拽计算 - 当前点: {currentPoint}, 偏移: {deltaX:F2}, 新X: {newX:F2}, 最大X: {maxX:F2}");
-
-                // 更新播放头位置
-                PlayheadLine.X1 = newX;
-                PlayheadLine.X2 = newX;
-                Canvas.SetLeft(PlayheadTopBlock, newX - 6);
-
-                // 计算对应的时间
-                var pixelsPerSecond = _viewModel.PixelsPerSecond;
-                var time = TimeSpan.FromSeconds(newX / pixelsPerSecond);
-
-                _logger.LogDebug($"播放头位置更新 - 像素/秒: {pixelsPerSecond:F2}, 时间: {time:mm\\:ss\\.f}");
-
-                // 通过ViewModel更新
-                _viewModel.UpdatePlayheadPosition(time);
-            }
-            else
-            {
-                _logger.LogDebug($"拖拽条件不满足 - 拖拽状态: {_isDraggingPlayhead}, 视频存在: {_viewModel.CurrentVideo != null}");
-            }
-        }
-
-        private void Playhead_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            _logger.LogInformation($"播放头鼠标释放事件触发 - 拖拽状态: {_isDraggingPlayhead}");
-
-            if (_isDraggingPlayhead)
-            {
-                _isDraggingPlayhead = false;
-                PlayheadCanvas.ReleaseMouseCapture();
-                e.Handled = true;
-
-                _logger.LogInformation("播放头拖拽结束，鼠标已释放");
-            }
-            else
-            {
-                _logger.LogDebug("播放头鼠标释放但未在拖拽状态");
-            }
-        }
-
         // 切分点功能
         public void AddSplitPoint(TimeSpan time)
         {
@@ -571,28 +508,22 @@ namespace VideoCutTool.WPF.Views.Controls
             _logger.LogInformation($"添加切分点: {time:mm\\:ss\\.f}");
 
             var pixelsPerSecond = _viewModel.PixelsPerSecond;
-            var x = Math.Round(time.TotalSeconds * pixelsPerSecond);
+            var x = time.TotalSeconds * pixelsPerSecond;
 
             var splitLine = new Line
             {
-                X1 = x,
+                X1 = x-1,
                 Y1 = 0,
-                X2 = x,
+                X2 = x-1,
                 Y2 = SplitersContainer.ActualHeight,
                 Stroke = Brushes.Red,
-                StrokeThickness = 4,
-                StrokeDashArray = new DoubleCollection { 5, 5 }
+                StrokeThickness = 3,
             };
 
             _logger.LogInformation($"切分点位置: {x}, 高度: {SplitersContainer.ActualHeight}");
 
-            Canvas.SetLeft(splitLine, x);
-            Canvas.SetTop(splitLine, 0);
             SplitPointsCanvas.Children.Add(splitLine);
             _splitPoints.Add(splitLine);
-
-            // 通过ViewModel触发切分事件，通知MainWindowViewModel
-            _viewModel.RequestSplitPoint(time);
         }
 
         public void RemoveSplitPoint(TimeSpan time)
@@ -616,19 +547,26 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
-        public void UpdateSplitPoints(List<TimeSpan> splitPoints)
+        #region ITimelineControlNotifyHandler
+
+        public void RefreshControlContent()
         {
-            _logger.LogInformation($"更新切分点显示: {splitPoints.Count} 个切分点");
-
-            // 清空现有切分点
-            ClearSplitPoints();
-
-            // 添加新的切分点
-            foreach (var time in splitPoints)
-            {
-                AddSplitPoint(time);
-            }
+            _logger.LogInformation("刷新时间轴控件内容");
+            RegenerateTimelineContent();
         }
+
+        /// <summary>
+        /// 只更新切分点和视频段
+        /// </summary>
+        public void RefreshSegmentAndSplitPoints()
+        {
+            _logger.LogInformation("更新切分点和视频段");
+
+            // 重新生成切分点
+            GenerateSplitPoints();
+        }
+
+        #endregion
 
         public void ClearSplitPoints()
         {
@@ -636,6 +574,11 @@ namespace VideoCutTool.WPF.Views.Controls
             _splitPoints.Clear();
         }
 
+        #endregion
+
+        #region 事件处理
+
+        #region 缩放相关事件
         private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             // 只在值真正改变且不是初始化时记录日志
@@ -719,6 +662,8 @@ namespace VideoCutTool.WPF.Views.Controls
             ZoomSlider.Value = bestZoom;
         }
 
+        #endregion
+
         private void TimelineScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
             // 处理滚动事件
@@ -743,11 +688,6 @@ namespace VideoCutTool.WPF.Views.Controls
                 _viewModel = DataContext as TimelineControlViewModel;
                 if (_viewModel != null)
                 {
-                    // 订阅ViewModel事件
-                    _viewModel.PlayheadPositionChanged += OnViewModelPlayheadPositionChanged;
-                    _viewModel.SplitPointRequested += OnViewModelSplitPointRequested;
-                    _viewModel.TimelineContentChanged += OnViewModelTimelineContentChanged;
-
                     // 初始化时间轴内容
                     RegenerateTimelineContent().ConfigureAwait(false);
                 }
@@ -762,15 +702,91 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
-        private void UserControl_Unloaded(object sender, RoutedEventArgs e)
+        #region 播放头拖拽事件处理
+        private void Playhead_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_viewModel != null)
+            if (!_viewModel.IsTimelineViewModelValid())
             {
-                // 解除绑定ViewModel事件
-                _viewModel.PlayheadPositionChanged -= OnViewModelPlayheadPositionChanged;
-                _viewModel.SplitPointRequested -= OnViewModelSplitPointRequested;
-                _viewModel.TimelineContentChanged -= OnViewModelTimelineContentChanged;
+                _logger.LogWarning("播放头鼠标按下事件时, ViewModel 未初始化，不需要处理");
+                return;
+            }
+
+            _logger.LogInformation($"播放头鼠标按下事件触发 - 位置: {e.GetPosition(PlayheadCanvas)}, 按钮: {e.ChangedButton}");
+
+            _isDraggingPlayhead = true;
+            _dragStartPoint = e.GetPosition(PlayheadCanvas);
+            _dragStartX = PlayheadLine.X1;
+
+            _logger.LogInformation($"开始拖拽 - 起始点: {_dragStartPoint}, 起始X: {_dragStartX}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
+
+            PlayheadCanvas.CaptureMouse();
+            e.Handled = true;
+
+            _logger.LogInformation("播放头拖拽开始，鼠标已捕获");
+        }
+
+        private void Playhead_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_viewModel.IsTimelineViewModelValid())
+            {
+                _logger.LogWarning("播放头鼠标移动事件时, ViewModel 未初始化，不需要处理");
+                return;
+            }
+
+            _logger.LogDebug($"播放头鼠标移动事件触发 - 拖拽状态: {_isDraggingPlayhead}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
+
+            if (_isDraggingPlayhead && _viewModel.CurrentVideo != null)
+            {
+                var currentPoint = e.GetPosition(PlayheadCanvas);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var newX = _dragStartX + deltaX;
+
+                // 限制在时间轴范围内
+                var maxX = _viewModel.CurrentVideo.Duration.TotalSeconds * _viewModel.PixelsPerSecond;
+                newX = Math.Max(0, Math.Min(maxX, newX));
+
+                _logger.LogDebug($"拖拽计算 - 当前点: {currentPoint}, 偏移: {deltaX:F2}, 新X: {newX:F2}, 最大X: {maxX:F2}");
+
+                // 更新播放头位置
+                PlayheadLine.X1 = newX;
+                PlayheadLine.X2 = newX;
+                Canvas.SetLeft(PlayheadTopBlock, newX - 6);
+
+                // 计算对应的时间
+                var pixelsPerSecond = _viewModel.PixelsPerSecond;
+                var time = TimeSpan.FromSeconds(newX / pixelsPerSecond);
+
+                _logger.LogDebug($"播放头位置更新 - 像素/秒: {pixelsPerSecond:F2}, 时间: {time:mm\\:ss\\.f}");
+
+                // 通过ViewModel更新
+                _viewModel.UpdatePlayheadPosition(time);
+            }
+            else
+            {
+                _logger.LogDebug($"拖拽条件不满足 - 拖拽状态: {_isDraggingPlayhead}, 视频存在: {_viewModel.CurrentVideo != null}");
             }
         }
+
+        private void Playhead_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _logger.LogInformation($"播放头鼠标释放事件触发 - 拖拽状态: {_isDraggingPlayhead}");
+
+            if (_isDraggingPlayhead)
+            {
+                _isDraggingPlayhead = false;
+                PlayheadCanvas.ReleaseMouseCapture();
+                e.Handled = true;
+
+                _logger.LogInformation("播放头拖拽结束，鼠标已释放");
+            }
+            else
+            {
+                _logger.LogDebug("播放头鼠标释放但未在拖拽状态");
+            }
+        }
+        
+        #endregion
+
+        #endregion
     }
 }

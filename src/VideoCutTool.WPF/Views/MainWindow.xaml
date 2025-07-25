@@ -250,8 +250,7 @@
 
         <!-- 时间轴控件 -->
         <controls:TimelineControl Grid.Row="2" Margin="4" x:Name="TimelineControl" MinHeight="160"
-            Background="{StaticResource AppBackgroundBrush}" DataContext="{Binding TimelineViewModel}"
-            PlayheadPositionChanged="OnTimelinePlayheadPositionChanged"/>
+            Background="{StaticResource AppBackgroundBrush}" DataContext="{Binding TimelineViewModel}"/>
 
         <!-- 底部状态栏 -->
         <materialDesign:ColorZone Grid.Row="4" Mode="PrimaryLight" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}">

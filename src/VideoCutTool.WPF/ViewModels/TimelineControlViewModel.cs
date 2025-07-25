@@ -17,22 +17,21 @@ namespace VideoCutTool.WPF.ViewModels
     {
         private readonly IVideoService _videoService;
         private readonly ILogger _logger;
+        /// <summary>
+        /// 主界面的通知处理器
+        /// </summary>
         public IMainPageNotifyHandler UINotifier { get; set; }
 
-        // 视频信息
-        private VideoInfo? _currentVideo;
-       
+        /// <summary>
+        /// 当前控件的通知处理器
+        /// </summary>
+        public ITimelineControlNotifyHandler ControlNotifier { get; set; }
 
         private readonly Stack<Action> _undoStack = new();
         private readonly Stack<Action> _redoStack = new();
 
         // 缩略图缓存
         private Dictionary<string, string> _thumbnailCache = new();
-        
-        // 事件
-        public event Action<TimeSpan>? PlayheadPositionChanged;
-        public event Action<TimeSpan>? SplitPointRequested;
-        public event Action? TimelineContentChanged;
         
         public TimelineControlViewModel(IVideoService videoService)
         {
@@ -43,6 +42,10 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         #region 属性
+
+        // 视频信息
+        [ObservableProperty]
+        private VideoInfo? _currentVideo;
 
         [ObservableProperty]
         private double _zoomLevel = 1.0; // 缩放倍数：1, 10, 20, 30, ..., 100
@@ -61,7 +64,7 @@ namespace VideoCutTool.WPF.ViewModels
         private bool _canClear = false;
 
         [ObservableProperty]
-        private List<TimeSpan> _splitPoints = new();
+        private ObservableCollection<TimeSpan> _splitPoints = new ObservableCollection<TimeSpan>();
 
         [ObservableProperty]
         private TimelineSegment? _selectedSegment;
@@ -69,20 +72,6 @@ namespace VideoCutTool.WPF.ViewModels
         [ObservableProperty]
         private ObservableCollection<TimelineSegment> _timelineSegments = new();
 
-        public VideoInfo? CurrentVideo
-        {
-            get => _currentVideo;
-            set
-            {
-                if (SetProperty(ref _currentVideo, value))
-                {
-                    _logger.Information($"设置当前视频: {value?.FilePath ?? "null"}");
-                    _ = LoadVideoAsync();
-                }
-            }
-        }
-        
-        
         [ObservableProperty]
         private double _totalWidth = 1000.0;
 
@@ -97,38 +86,6 @@ namespace VideoCutTool.WPF.ViewModels
         #endregion
 
         #region 公共方法
-
-        public async Task LoadVideoAsync()
-        {
-            if (_currentVideo == null)
-            {
-                _logger.Warning("尝试加载视频但CurrentVideo为null");
-                return;
-            }
-            
-            _logger.Information($"开始加载视频: {_currentVideo.FilePath}");
-            
-            try
-            {
-                // 计算时间轴宽度
-                var duration = _currentVideo.Duration.TotalSeconds;
-                TotalWidth = duration * PixelsPerSecond;
-                
-                _logger.Information($"视频时长: {_currentVideo.Duration:mm\\:ss}, 时间轴宽度: {TotalWidth}px");
-                
-                // 清除缓存
-                _thumbnailCache.Clear();
-                
-                // 触发内容更新
-                TimelineContentChanged?.Invoke();
-                
-                _logger.Information("视频加载完成");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "加载视频时发生错误");
-            }
-        }
 
         public async Task LoadProjectAsync(ProjectInfo projectInfo)
         {
@@ -149,11 +106,14 @@ namespace VideoCutTool.WPF.ViewModels
                 TimelineSegments = new ObservableCollection<TimelineSegment>(projectInfo.TimelineSegments);
 
                 // 设置切分点
-                SplitPoints = new List<TimeSpan>(projectInfo.SplitPoints);
-                
+                SplitPoints = new ObservableCollection<TimeSpan>(projectInfo.SplitPoints);
+
+                UpdateSegmentsFromSplitPoints(false);
+
                 // 更新状态消息
                 UINotifier.NotifyStatusMessage($"已加载项目: {projectInfo.Name}");
-                
+
+                UpdateContentAsync();
                 _logger.Information("项目加载完成");
             }
             catch (Exception ex)
@@ -162,27 +122,27 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        public async Task UpdateTimelineContentAsync()
+        public async Task UpdateContentAsync()
         {
-            if (_currentVideo == null)
+            if (CurrentVideo == null)
             {
                 _logger.Warning("尝试更新时间轴内容但CurrentVideo为null");
                 return;
             }
             
-            _logger.Debug($"开始更新时间轴内容，缩放级别: {_zoomLevel}");
+            _logger.Debug($"开始更新时间轴内容，缩放级别: {ZoomLevel}");
             
             try
             {
                 // 重新计算时间轴宽度
-                var duration = _currentVideo.Duration.TotalSeconds;
-                TotalWidth = duration * PixelsPerSecond;
+                var duration = CurrentVideo.Duration.TotalSeconds;
+                TotalWidth = duration * PixelsPerSecond * ZoomLevel;
                 
                 _logger.Debug($"更新后时间轴宽度: {TotalWidth}px, 像素/秒: {PixelsPerSecond}");
-                
+
                 // 触发内容更新
-                TimelineContentChanged?.Invoke();
-                
+                ControlNotifier.RefreshControlContent();
+
                 _logger.Debug("时间轴内容更新完成");
             }
             catch (Exception ex)
@@ -194,18 +154,13 @@ namespace VideoCutTool.WPF.ViewModels
         public void UpdatePlayheadPosition(TimeSpan time)
         {
             _logger.Debug($"更新播放头位置: {time:mm\\:ss\\.f}");
-            PlayheadPositionChanged?.Invoke(time);
-        }
-        
-        public void RequestSplitPoint(TimeSpan time)
-        {
-            _logger.Information($"请求切分点: {time:mm\\:ss\\.f}");
-            SplitPointRequested?.Invoke(time);
+            
+            UINotifier.SetCurrentTime(time);
         }
         
         public async Task<string?> GetThumbnailPathAsync(double time)
         {
-            if (_currentVideo == null)
+            if (CurrentVideo == null)
             {
                 _logger.Warning("尝试获取缩略图但CurrentVideo为null");
                 return null;
@@ -223,7 +178,7 @@ namespace VideoCutTool.WPF.ViewModels
             try
             {
                 _logger.Debug($"生成缩略图: {time:F1}s");
-                var thumbnailPath = await _videoService.GenerateThumbnailAsync(_currentVideo.FilePath, time);
+                var thumbnailPath = await _videoService.GenerateThumbnailAsync(CurrentVideo.FilePath, time);
                 
                 if (System.IO.File.Exists(thumbnailPath))
                 {
@@ -266,7 +221,7 @@ namespace VideoCutTool.WPF.ViewModels
 
         public void ClearSplitPoints()
         {
-            SplitPoints = new List<TimeSpan>();
+            SplitPoints.Clear();
             _logger.Information("清空所有切分点");
             UINotifier.NotifyStatusMessage("已清空所有切分点");
         }
@@ -277,7 +232,7 @@ namespace VideoCutTool.WPF.ViewModels
 
         private string GetThumbnailCacheKey(double time)
         {
-            var videoFileName = System.IO.Path.GetFileNameWithoutExtension(_currentVideo?.FilePath ?? "");
+            var videoFileName = System.IO.Path.GetFileNameWithoutExtension(CurrentVideo?.FilePath ?? "");
             var timeKey = time.ToString("F1").Replace(".", "_");
             return $"{videoFileName}_{timeKey}s";
         }
@@ -336,7 +291,7 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        private void UpdateSegmentsFromSplitPoints()
+        private void UpdateSegmentsFromSplitPoints(bool bUpdateContent)
         {
             if (CurrentVideo == null) return;
 
@@ -346,7 +301,7 @@ namespace VideoCutTool.WPF.ViewModels
             TimelineSegments.Clear();
 
             // 排序切分点
-            var sortedSplitPoints = _splitPoints.OrderBy(sp => sp).ToList();
+            var sortedSplitPoints = SplitPoints.OrderBy(sp => sp).ToList();
 
             // 添加开始时间点（0秒）
             var allTimePoints = new List<TimeSpan> { TimeSpan.Zero };
@@ -378,6 +333,11 @@ namespace VideoCutTool.WPF.ViewModels
 
             UINotifier.UpdateProjectInfo();
             UINotifier.NotifyStatusMessage($"已根据 {sortedSplitPoints.Count} 个切分点创建 {TimelineSegments.Count} 个片段");
+
+            if (bUpdateContent)
+            {
+                ControlNotifier.RefreshControlContent();
+            }
         }
 
         public void AddSplitPoint(TimeSpan time)
@@ -400,7 +360,7 @@ namespace VideoCutTool.WPF.ViewModels
                 }
 
                 // 检查是否已存在相同时间的切分点
-                if (_splitPoints.Any(sp => Math.Abs((sp - time).TotalSeconds) < 0.1))
+                if (SplitPoints.Any(sp => Math.Abs((sp - time).TotalSeconds) < 0.1))
                 {
                     _logger.Information($"切分点已存在: {time:mm\\:ss\\.f}");
                     UINotifier.NotifyStatusMessage("该位置已存在切分点");
@@ -408,8 +368,8 @@ namespace VideoCutTool.WPF.ViewModels
                 }
 
                 // 添加切分点
-                var newSplitPoints = new List<TimeSpan>(_splitPoints) { time };
-                SplitPoints = newSplitPoints;
+                SplitPoints.Add(time);
+                UpdateSegmentsFromSplitPoints(false);
 
                 _logger.Information($"添加切分点成功: {time:mm\\:ss\\.f}");
                 UINotifier.NotifyStatusMessage($"已添加切分点: {time:mm\\:ss\\.f}");
@@ -421,18 +381,26 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        public void RemoveSplitPoint(TimeSpan time)
+        public void RemoveSplitPoint(TimeSpan curTime)
         {
-            var removed = _splitPoints.RemoveAll(sp => Math.Abs((sp - time).TotalSeconds) < 0.1);
-            if (removed > 0)
+            bool bRemoved = false;
+            foreach (var time in SplitPoints)
             {
-                SplitPoints = new List<TimeSpan>(_splitPoints);
-                _logger.Information($"移除切分点成功: {time:mm\\:ss\\.f}");
-                UINotifier.NotifyStatusMessage($"已移除切分点: {time:mm\\:ss\\.f}");
+                if (Math.Abs((time - curTime).TotalSeconds) < 0.1)
+                {
+                    SplitPoints.Remove(time);
+                    bRemoved = true;
+                }
+            }
+
+            if (bRemoved)
+            {
+                _logger.Information($"移除切分点成功: {curTime:mm\\:ss\\.f}");
+                UINotifier.NotifyStatusMessage($"已移除切分点: {curTime:mm\\:ss\\.f}");
             }
             else
             {
-                _logger.Warning($"未找到要移除的切分点: {time:mm\\:ss\\.f}");
+                _logger.Warning($"未找到要移除的切分点: {curTime:mm\\:ss\\.f}");
                 UINotifier.NotifyStatusMessage("未找到指定的切分点");
             }
         }
@@ -449,7 +417,12 @@ namespace VideoCutTool.WPF.ViewModels
 
             var currentTime = UINotifier.GetCurrentTime();
             RemoveSplitPoint(currentTime);
+            _logger.Debug("删除当前切分点, {0}", currentTime);
+
             UpdateCommandStates();
+            UpdateSegmentsFromSplitPoints(false);
+
+            ControlNotifier.RefreshSegmentAndSplitPoints();
         }
 
         [RelayCommand]
@@ -561,7 +534,7 @@ namespace VideoCutTool.WPF.ViewModels
         {
             _logger.Information("开始清空切分点流程");
 
-            if (_splitPoints.Count == 0)
+            if (SplitPoints.Count == 0)
             {
                 _logger.Warning("尝试清空切分点但当前没有切分点");
                 UINotifier.NotifyStatusMessage("当前没有切分点");
@@ -569,15 +542,21 @@ namespace VideoCutTool.WPF.ViewModels
             }
 
             // 保存撤销操作
-            var oldSplitPoints = new List<TimeSpan>(_splitPoints);
+            var oldSplitPoints = new ObservableCollection<TimeSpan>(SplitPoints);
             _undoStack.Push(() =>
             {
                 SplitPoints = oldSplitPoints;
                 _logger.Debug("撤销操作：恢复 {Count} 个切分点", oldSplitPoints.Count);
+                UpdateCommandStates();
+                UpdateSegmentsFromSplitPoints(false);
+
+                ControlNotifier.RefreshSegmentAndSplitPoints();
             });
 
             ClearSplitPoints();
             UpdateCommandStates();
+            UpdateSegmentsFromSplitPoints(false);
+            ControlNotifier.RefreshSegmentAndSplitPoints();
 
             _logger.Information("清空切分点成功");
             UINotifier.NotifyStatusMessage("已清空所有切分点");
@@ -605,10 +584,14 @@ namespace VideoCutTool.WPF.ViewModels
             {
                 RemoveSplitPoint(splitTime);
                 _logger.Debug("撤销操作：移除切分点 {SplitTime}", splitTime);
+                UpdateCommandStates();
+                UpdateSegmentsFromSplitPoints(false);
+                ControlNotifier.RefreshSegmentAndSplitPoints();
             });
 
             UpdateCommandStates();
-
+            UpdateSegmentsFromSplitPoints(false);
+            ControlNotifier.RefreshSegmentAndSplitPoints();
         }
 
 

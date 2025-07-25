@@ -38,6 +38,7 @@ namespace VideoCutTool.WPF.Views
             var subVm = serviceProvider.GetRequiredService<TimelineControlViewModel>();
 
             subVm.UINotifier = vm;
+            subVm.ControlNotifier = TimelineControl;
             vm.TimelineViewModel = subVm;
 
             DataContext = vm;
@@ -110,14 +111,6 @@ namespace VideoCutTool.WPF.Views
             }
         }
         
-        private void OnTimelinePlayheadPositionChanged(TimeSpan newTime)
-        {
-            if (DataContext is MainWindowViewModel viewModel)
-            {
-                viewModel.OnPlayheadPositionChanged(newTime);
-            }
-        }
-
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
