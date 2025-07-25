@@ -212,7 +212,7 @@ namespace VideoCutTool.WPF.ViewModels
 
             CanUndo = _undoStack.Count > 0;
             CanRedo = _redoStack.Count > 0;
-            CanDelete = SplitPoints.Count > 0; // 修改为检查是否有切分点可以删除
+            CanDelete = SelectedSegment != null; // 检查
             CanClear = SplitPoints.Count > 0; // 修改为检查切分点数量
 
             _logger.Debug("命令状态更新 - 撤销: {OldUndo} -> {NewUndo}, 重做: {OldRedo} -> {NewRedo}, 删除: {OldDelete} -> {NewDelete}, 清空: {OldClear} -> {NewClear}",
@@ -406,26 +406,6 @@ namespace VideoCutTool.WPF.ViewModels
         }
 
         [RelayCommand]
-        private void RemoveSplitPointAtCurrentTime()
-        {
-            if (CurrentVideo == null)
-            {
-                _logger.Warning("尝试删除切分点但未导入视频");
-                UINotifier.NotifyStatusMessage("请先导入视频");
-                return;
-            }
-
-            var currentTime = UINotifier.GetCurrentTime();
-            RemoveSplitPoint(currentTime);
-            _logger.Debug("删除当前切分点, {0}", currentTime);
-
-            UpdateCommandStates();
-            UpdateSegmentsFromSplitPoints(false);
-
-            ControlNotifier.RefreshSegmentAndSplitPoints();
-        }
-
-        [RelayCommand]
         private void SelectSegment(TimelineSegment segment)
         {
             _logger.Information("选择片段: {SegmentName}", segment.Name);
@@ -440,8 +420,8 @@ namespace VideoCutTool.WPF.ViewModels
             segment.IsSelected = true;
             SelectedSegment = segment;
 
-            // 跳转到片段开始时间
-            UINotifier.SetCurrentTime(segment.StartTime);
+            // 不需要跳转
+            // UINotifier.SetCurrentTime(segment.StartTime);
 
             UpdateCommandStates();
             UINotifier.NotifyStatusMessage($"已选择片段: {segment.Name}");
@@ -480,6 +460,9 @@ namespace VideoCutTool.WPF.ViewModels
 
             _logger.Information("片段删除成功，剩余片段数量: {RemainingSegments}", TimelineSegments.Count);
             UINotifier.NotifyStatusMessage($"已删除片段: {selectedSegment.Name}");
+
+
+            // TODO: 更新，甚至完全去掉切分点的逻辑
         }
 
         [RelayCommand]

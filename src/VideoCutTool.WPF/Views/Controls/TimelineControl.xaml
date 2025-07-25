@@ -44,9 +44,9 @@
                         <materialDesign:PackIcon Kind="ContentCut" Width="16" Height="16" />
                     </Button>
 
-                    <Button Command="{Binding RemoveSplitPointAtCurrentTimeCommand}" Margin="4,0" Width="48"
+                    <Button Command="{Binding DeleteSegmentCommand}" Margin="4,0" Width="48"
                             IsEnabled="{Binding CanDelete}" Background="{StaticResource SecondaryButtonBrush}"
-                            Foreground="{StaticResource ButtonTextBrush}" ToolTip="删除切分点 (Del)">
+                            Foreground="{StaticResource ButtonTextBrush}" ToolTip="删除选中视频段 (Del)">
                         <materialDesign:PackIcon Kind="Delete" Width="16" Height="16"/>
                     </Button>
 
@@ -85,12 +85,14 @@
                       HorizontalScrollBarVisibility="Visible"
                       VerticalScrollBarVisibility="Disabled">
             
-            <Grid x:Name="TimelineGrid" MinWidth="1000" HorizontalAlignment="Left" Margin="20,0">
+            <Grid x:Name="TimelineGrid" MinWidth="1000" HorizontalAlignment="Left" Margin="10,0,10,8" >
                 <Grid.RowDefinitions>
                     <RowDefinition Height="30" /> <!-- 时间标尺 -->
-                    <RowDefinition Height="*" /> 
-                    <RowDefinition Height="30" /> <!-- 音频波形轨道 -->
-                    <RowDefinition Height="10" /> <!-- 切分点 -->
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="10" />
+                    <RowDefinition Height="40" /> <!-- 缩略图 -->
+                    <RowDefinition Height="40" /> <!-- 音频波形轨道 -->
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 
                 <!-- 时间标尺 -->
@@ -98,44 +100,42 @@
                     <Canvas x:Name="RulerCanvas" Background="Transparent">
                         <!-- 时间刻度线会在这里动态生成 -->
                     </Canvas>
-                    
                 </Grid>
                 
                 <!-- 视频缩略图轨道 -->
-                <Grid Grid.Row="1" x:Name="VideoTrackContainer" VerticalAlignment="Center">
+                <Grid Grid.Row="3" x:Name="VideoTrackContainer"  Height="60">
                     <Canvas x:Name="VideoTrackCanvas" Background="Transparent" Height="{Binding ElementName=VideoTrackContainer, Path=ActualHeight}">
                         <!-- 缩略图会在这里动态生成 -->
                     </Canvas>
                 </Grid>
                 
                 <!-- 音频波形轨道 -->
-                <Border Grid.Row="2" x:Name="AudioTrackContainer" Height="40" VerticalAlignment="Top">
+                <Border Grid.Row="4" x:Name="AudioTrackContainer" Height="40" >
                     <Canvas x:Name="AudioTrackCanvas" Background="Transparent" Height="{Binding ElementName=AudioTrackContainer, Path=ActualHeight}">
                         <!-- 音频波形会在这里动态生成 -->
                     </Canvas>
                 </Border>
 
                 <!-- 播放头 - 覆盖在所有轨道上方 -->
-                <Canvas x:Name="PlayheadCanvas" Grid.RowSpan="3" 
+                <Canvas x:Name="PlayheadCanvas" Grid.RowSpan="7" 
                         Background="Transparent" Cursor="SizeWE"
                         MouseLeftButtonDown="Playhead_MouseLeftButtonDown"
                         MouseMove="Playhead_MouseMove"
                         MouseLeftButtonUp="Playhead_MouseLeftButtonUp">
                     <!-- 播放头线条 -->
                     <Line x:Name="PlayheadLine" 
-                          Stroke="#FFD700" StrokeThickness="3" 
+                          Stroke="#80BBBBBB" StrokeThickness="3" 
                           X1="0" X2="0" Y1="0" Y2="{Binding ElementName=TimelineGrid,Path=ActualHeight}" />
                     <!-- 播放头顶部块 -->
                     <Border x:Name="PlayheadTopBlock" Canvas.Top="0" Canvas.Left="-6" Width="12" Height="8" 
-                            Background="#FFD700" CornerRadius="2" 
+                            Background="#80FFFFFF" CornerRadius="2" 
                             HorizontalAlignment="Center" />
                 </Canvas>
 
-                <!-- 切分点 -->
-                <Grid Grid.Row="3" x:Name="SplitersContainer">
-                    <!-- 切分点集合 -->
-                    <Canvas x:Name="SplitPointsCanvas" Background="Transparent">
-                        <!-- 切分点会在这里动态生成 -->
+                <!-- 视频分段 -->
+                <Grid Grid.Row="2" Grid.RowSpan="3"  x:Name="VideoSegmentsContainer">
+                    <Canvas x:Name="VideoSegmentsCanvas" Background="Transparent" Height="{Binding ElementName=VideoSegmentsContainer, Path=ActualHeight}">
+                        <!-- 视频分段会在这里动态生成 -->
                     </Canvas>
                 </Grid>
             </Grid>

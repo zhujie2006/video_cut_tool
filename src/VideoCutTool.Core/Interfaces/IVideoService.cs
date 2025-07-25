@@ -48,7 +48,9 @@ namespace VideoCutTool.Core.Interfaces
         /// 生成音频波形数据
         /// </summary>
         /// <param name="videoPath">视频文件路径</param>
+        /// <param name="duration">视频时长（秒）</param>
+        /// <param name="dataPointsPerSecond">每秒数据点数量</param>
         /// <returns>音频波形数据</returns>
-        Task<List<double>> GenerateAudioWaveformAsync(string videoPath);
+        Task<List<double>> GenerateAudioWaveformAsync(string videoPath, double duration, int dataPointsPerSecond = 10);
     }
 }

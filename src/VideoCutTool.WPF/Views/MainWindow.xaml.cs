@@ -137,7 +137,7 @@ namespace VideoCutTool.WPF.Views
                         // Delete键删除当前时间点的切分点
                         if (viewModel.TimelineViewModel != null)
                         {
-                            viewModel.TimelineViewModel.RemoveSplitPointAtCurrentTimeCommand.Execute(null);
+                            viewModel.TimelineViewModel.DeleteSegmentCommand.Execute(null);
                             e.Handled = true;
                         }
                         break;

@@ -197,15 +197,20 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
         
-        public async Task<List<double>> GenerateAudioWaveformAsync(string videoPath)
+        public async Task<List<double>> GenerateAudioWaveformAsync(string videoPath, double duration, int dataPointsPerSecond = 10)
         {
-            _logger.Debug("生成音频波形 - 视频: {VideoPath}", videoPath);
+            _logger.Debug("生成音频波形 - 视频: {VideoPath}, 时长: {Duration}秒, 数据点密度: {DataPointsPerSecond}/秒", videoPath, duration, dataPointsPerSecond);
             
             try
             {
+                // 计算需要的数据点数量
+                var totalDataPoints = (int)(duration * dataPointsPerSecond);
+                
+                _logger.Debug("需要生成 {TotalDataPoints} 个数据点", totalDataPoints);
+                
                 // 使用FFmpeg提取音频并分析波形
-                // 使用astats滤镜来获取音频统计信息，包括RMS（均方根）值
-                var arguments = "-af \"aresample=8000,asetnsamples=n=1024,astats=metadata=1:reset=1,metadata=mode=print:file=-\" -f null -";
+                // 修改滤镜参数以生成与时长对应的数据点
+                var arguments = $"-af \"aresample=8000,asetnsamples=n={totalDataPoints},astats=metadata=1:reset=1,metadata=mode=print:file=-\" -f null -";
                 
                 _logger.Debug("FFmpeg音频分析命令: {Arguments}", arguments);
                 
@@ -214,18 +219,18 @@ namespace VideoCutTool.Infrastructure.Services
                 if (result.Success)
                 {
                     // 解析音频数据并生成波形
-                    return ParseAudioWaveform(result.Output);
+                    return ParseAudioWaveform(result.Output, totalDataPoints);
                 }
                 else
                 {
                     _logger.Warning("音频波形生成失败，使用模拟数据");
-                    return GenerateSimulatedWaveform();
+                    return GenerateSimulatedWaveform(totalDataPoints);
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "生成音频波形时发生异常");
-                return GenerateSimulatedWaveform();
+                return GenerateSimulatedWaveform((int)(duration * dataPointsPerSecond));
             }
         }
         
@@ -526,13 +531,13 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
         
-        private List<double> ParseAudioWaveform(string ffmpegOutput)
+        private List<double> ParseAudioWaveform(string ffmpegOutput, int expectedDataPoints)
         {
             var waveform = new List<double>();
             
             try
             {
-                _logger.Debug("开始解析音频波形数据，输出长度: {Length}", ffmpegOutput.Length);
+                _logger.Debug("开始解析音频波形数据，输出长度: {Length}, 期望数据点: {ExpectedPoints}", ffmpegOutput.Length, expectedDataPoints);
                 
                 var lines = ffmpegOutput.Split('\n');
                 var rmsValues = new List<double>();
@@ -570,13 +575,18 @@ namespace VideoCutTool.Infrastructure.Services
                 // 如果成功解析到数据，使用解析的数据
                 if (rmsValues.Count > 0)
                 {
-                    // 将数据点扩展到合适的时间轴长度
-                    var targetLength = 1000; // 目标波形长度
-                    var step = Math.Max(1, rmsValues.Count / targetLength);
+                    // 将数据点扩展到期望的长度
+                    var step = Math.Max(1, rmsValues.Count / expectedDataPoints);
                     
-                    for (int i = 0; i < targetLength && i * step < rmsValues.Count; i++)
+                    for (int i = 0; i < expectedDataPoints && i * step < rmsValues.Count; i++)
                     {
                         waveform.Add(rmsValues[i * step]);
+                    }
+                    
+                    // 如果数据点不够，用最后一个值填充
+                    while (waveform.Count < expectedDataPoints)
+                    {
+                        waveform.Add(rmsValues.Count > 0 ? rmsValues[^1] : 0.5);
                     }
                     
                     _logger.Debug("生成波形数据点: {Count}", waveform.Count);
@@ -585,23 +595,23 @@ namespace VideoCutTool.Infrastructure.Services
                 else
                 {
                     _logger.Warning("未能解析到有效的音频数据，使用模拟数据");
-                    return GenerateSimulatedWaveform();
+                    return GenerateSimulatedWaveform(expectedDataPoints);
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error(ex, "解析音频波形数据时发生异常");
-                return GenerateSimulatedWaveform();
+                return GenerateSimulatedWaveform(expectedDataPoints);
             }
         }
         
-        private List<double> GenerateSimulatedWaveform()
+        private List<double> GenerateSimulatedWaveform(int dataPoints = 1000)
         {
             var waveform = new List<double>();
             var random = new Random(42); // 固定种子以获得一致的结果
             
             // 生成模拟的音频波形数据
-            for (int i = 0; i < 1000; i++) // 生成1000个数据点
+            for (int i = 0; i < dataPoints; i++)
             {
                 var amplitude = random.NextDouble() * 0.8 + 0.2; // 0.2-1.0之间的随机值
                 waveform.Add(amplitude);

@@ -24,6 +24,9 @@ namespace VideoCutTool.Core.Interfaces
         /// </summary>
         public void SetCurrentTime(TimeSpan time);
 
+        /// <summary>
+        /// 获取当前时间
+        /// </summary>
         public TimeSpan GetCurrentTime();
     }
 }

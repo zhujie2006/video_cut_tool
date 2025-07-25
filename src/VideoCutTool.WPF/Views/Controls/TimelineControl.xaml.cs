@@ -30,6 +30,7 @@ namespace VideoCutTool.WPF.Views.Controls
         private List<Image> _thumbnails = new();
         private List<Rectangle> _waveformBars = new();
         private List<Line> _splitPoints = new();
+        private List<Border> _segmentBorders = new(); // 视频分段边框
 
         // 播放头拖拽相关
         private bool _isDraggingPlayhead = false;
@@ -147,8 +148,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 // 生成音频波形
                 await GenerateAudioWaveform();
 
-                // 生成切分点
-                await GenerateSplitPoints();
+                // 生成视频分段
+                await GenerateVideoSegments();
 
                 _logger.LogInformation("时间轴内容重新生成完成");
             }
@@ -176,6 +177,7 @@ namespace VideoCutTool.WPF.Views.Controls
 
             _logger.LogDebug($"时间标尺参数: 时长={duration}s, 间隔={interval}s, 像素/秒={pixelsPerSecond}");
 
+            // 生成常规间隔的刻度
             for (double time = 0; time <= duration; time += interval)
             {
                 var x = time * pixelsPerSecond;
@@ -206,6 +208,40 @@ namespace VideoCutTool.WPF.Views.Controls
                 RulerCanvas.Children.Add(timeText);
             }
 
+            // 检查是否需要添加最右侧的 duration 刻度
+            var lastRegularTime = Math.Floor(duration / interval) * interval;
+            if (Math.Abs(duration - lastRegularTime) > 0.1) // 如果 duration 不是 interval 的整数倍
+            {
+                var durationX = duration * pixelsPerSecond;
+
+                // 绘制最右侧的 duration 刻度线
+                var durationTickLine = new Line
+                {
+                    X1 = durationX,
+                    Y1 = 20,
+                    X2 = durationX,
+                    Y2 = 30,
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1
+                };
+                RulerCanvas.Children.Add(durationTickLine);
+
+                // 绘制最右侧的 duration 时间标签
+                var durationText = new TextBlock
+                {
+                    Text = TimeSpan.FromSeconds(duration).ToString(@"mm\:ss"),
+                    Foreground = Brushes.White,
+                    FontSize = 10,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                };
+
+                Canvas.SetLeft(durationText, durationX - 15);
+                Canvas.SetTop(durationText, 5);
+                RulerCanvas.Children.Add(durationText);
+
+                _logger.LogDebug($"添加了最右侧的 duration 刻度: {duration}s 在位置 {durationX}px");
+            }
+
             _logger.LogDebug($"时间标尺生成完成，共{Math.Ceiling(duration / interval)}个刻度");
         }
 
@@ -216,6 +252,14 @@ namespace VideoCutTool.WPF.Views.Controls
             if (_viewModel.ZoomLevel >= 100) return 10; // 10秒间隔
             if (_viewModel.ZoomLevel >= 50) return 30; // 30秒间隔
             return 60; // 60秒间隔
+        }
+
+        private int GetAudioWaveformDataPointsPerSecond(double duration)
+        {
+            if (duration <= 60) return 10;
+            if (duration <= 120) return 5;
+            if (duration <= 300) return 2;
+            return 1;
         }
 
         private async Task GenerateThumbnails()
@@ -235,16 +279,36 @@ namespace VideoCutTool.WPF.Views.Controls
             var thumbnailWidth = SettingViewModel.THUMBNAIL_WIDTH; // 固定缩略图宽度
             var thumbnailHeight = (SettingViewModel.THUMBNAIL_WIDTH / _viewModel.CurrentVideo.Width) * _viewModel.CurrentVideo.Height;
             var thumbnailTimeInterval = _viewModel.ThumbnailTimeInterval;
+            var pixelsPerSecond = _viewModel.PixelsPerSecond; // 添加像素/秒变量
 
-            _logger.LogDebug($"缩略图参数: 时长={duration}s, 间隔={thumbnailTimeInterval:F2}s, 宽度={thumbnailWidth}px");
+            _logger.LogDebug($"缩略图参数: 时长={duration}s, 间隔={thumbnailTimeInterval:F2}s, 宽度={thumbnailWidth}px, 像素/秒={pixelsPerSecond}");
 
             // 生成缩略图，每张缩略图的右边框对应的时间就是下一张缩略图的生成时间
             double currentTime = 0;
             double currentX = 0;
             int thumbnailCount = 0;
+            var durationX = duration * pixelsPerSecond; // 计算视频结束位置的X坐标
 
             while (currentTime < duration)
             {
+                // 边界检查：如果当前缩略图完全超出边界，停止生成
+                if (currentX >= durationX)
+                {
+                    _logger.LogDebug($"缩略图位置 {currentX}px 已超出视频边界 {durationX}px，停止生成");
+                    break;
+                }
+
+                // 计算当前缩略图的结束位置
+                var thumbnailEndX = currentX + thumbnailWidth;
+                
+                // 如果缩略图部分超出边界，调整宽度
+                double actualWidth = thumbnailWidth;
+                if (thumbnailEndX > durationX)
+                {
+                    actualWidth = durationX - currentX;
+                    _logger.LogDebug($"缩略图部分超出边界，调整宽度: {thumbnailWidth}px -> {actualWidth}px");
+                }
+
                 try
                 {
                     // 从ViewModel获取缩略图路径
@@ -255,7 +319,7 @@ namespace VideoCutTool.WPF.Views.Controls
                         var image = new Image
                         {
                             Source = new BitmapImage(new Uri(thumbnailPath)),
-                            Width = thumbnailWidth,
+                            Width = actualWidth,
                             Height = thumbnailHeight,
                             Stretch = Stretch.UniformToFill
                         };
@@ -273,7 +337,7 @@ namespace VideoCutTool.WPF.Views.Controls
                         var placeholder = new Border
                         {
                             Background = Brushes.Gray,
-                            Width = thumbnailWidth,
+                            Width = actualWidth,
                             Height = thumbnailHeight,
                             Child = new TextBlock
                             {
@@ -299,7 +363,7 @@ namespace VideoCutTool.WPF.Views.Controls
                     var placeholder = new Border
                     {
                         Background = Brushes.Red,
-                        Width = thumbnailWidth,
+                        Width = actualWidth,
                         Height = thumbnailHeight,
                         Child = new TextBlock
                         {
@@ -318,7 +382,7 @@ namespace VideoCutTool.WPF.Views.Controls
                 }
 
                 // 移动到下一个位置
-                currentX += thumbnailWidth;
+                currentX += thumbnailWidth; // 仍然使用原始宽度计算下一个位置
                 currentTime += thumbnailTimeInterval;
             }
 
@@ -342,12 +406,14 @@ namespace VideoCutTool.WPF.Views.Controls
             {
                 // 生成音频波形数据
                 var videoService = ((App)Application.Current).Services.GetRequiredService<IVideoService>();
-                var waveformData = await videoService.GenerateAudioWaveformAsync(_viewModel.CurrentVideo.FilePath);
+                var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
+                var dataPointsPerSecond = GetAudioWaveformDataPointsPerSecond(duration); // 估算每秒的数据点
+                var waveformData = await videoService.GenerateAudioWaveformAsync(_viewModel.CurrentVideo.FilePath, duration, dataPointsPerSecond);
 
                 var pixelsPerSecond = _viewModel.PixelsPerSecond;
-                var barWidth = Math.Max(1, pixelsPerSecond / 10); // 每0.1秒一个波形条
+                var timeInterval = 1.0 / dataPointsPerSecond; // 每个数据点对应的时间间隔
 
-                _logger.LogDebug($"音频波形参数: 像素/秒={pixelsPerSecond}, 条宽度={barWidth}px, 数据点={waveformData.Count}");
+                _logger.LogDebug($"音频波形参数: 像素/秒={pixelsPerSecond}, 时长={duration}s, 数据点={waveformData.Count}");
 
                 // 获取AudioTrackCanvas的实际高度
                 var canvasHeight = AudioTrackCanvas.ActualHeight;
@@ -358,24 +424,26 @@ namespace VideoCutTool.WPF.Views.Controls
 
                 _logger.LogDebug($"AudioTrackCanvas高度: {canvasHeight}px");
 
+                // 使用时间坐标而不是数组索引坐标
                 for (int i = 0; i < waveformData.Count; i++)
                 {
                     var amplitude = waveformData[i];
-                    var x = i * barWidth;
-                    var maxBarHeight = canvasHeight * 1.0; // 最大高度为Canvas高度的80%
+                    var time = i * timeInterval; // 计算当前数据点对应的时间
+                    var x = time * pixelsPerSecond; // 使用时间计算X坐标
+                    var maxBarHeight = canvasHeight * 0.8; // 最大高度为Canvas高度的80%
                     var height = Math.Max(2, amplitude * maxBarHeight); // 将振幅转换为高度
 
                     var bar = new Rectangle
                     {
                         Fill = new SolidColorBrush(Color.FromRgb(0, 125, 125)), // 青色
-                        Width = ((barWidth - 1) < 2) ? 2 : (barWidth - 1),
+                        Width = Math.Max(2, pixelsPerSecond * timeInterval - 1), // 基于时间间隔计算宽度
                         Height = height,
                         RadiusX = 1,
                         RadiusY = 1
                     };
 
                     Canvas.SetLeft(bar, x);
-                    Canvas.SetTop(bar, canvasHeight - height); // 在Canvas中垂直居中
+                    Canvas.SetTop(bar, (canvasHeight - height) / 2); // 在Canvas中垂直居中
 
                     AudioTrackCanvas.Children.Add(bar);
                     _waveformBars.Add(bar);
@@ -390,7 +458,7 @@ namespace VideoCutTool.WPF.Views.Controls
                 // 如果波形生成失败，创建模拟波形
                 var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
                 var pixelsPerSecond = _viewModel.PixelsPerSecond;
-                var barWidth = Math.Max(1, pixelsPerSecond / 10);
+                var timeInterval = 0.1; // 每0.1秒一个波形条
 
                 // 获取AudioTrackCanvas的实际高度
                 var canvasHeight = AudioTrackCanvas.ActualHeight;
@@ -403,17 +471,17 @@ namespace VideoCutTool.WPF.Views.Controls
 
                 var random = new Random(42); // 固定种子以获得一致的模拟波形
 
-                for (double time = 0; time < duration; time += 0.1)
+                for (double time = 0; time < duration; time += timeInterval)
                 {
                     var amplitude = random.NextDouble() * 0.8 + 0.2; // 0.2-1.0之间的随机值
-                    var x = time * pixelsPerSecond;
+                    var x = time * pixelsPerSecond; // 使用时间计算X坐标
                     var maxBarHeight = canvasHeight * 0.8; // 最大高度为Canvas高度的80%
                     var height = amplitude * maxBarHeight;
 
                     var bar = new Rectangle
                     {
                         Fill = new SolidColorBrush(Color.FromRgb(150, 0, 0)),
-                        Width = barWidth - 1,
+                        Width = Math.Max(2, pixelsPerSecond * timeInterval - 1), // 基于时间间隔计算宽度
                         Height = height,
                         RadiusX = 1,
                         RadiusY = 1
@@ -430,26 +498,101 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
-        private async Task GenerateSplitPoints()
+        private async Task GenerateVideoSegments()
         {
-            _logger.LogInformation("开始生成切分点");
+            _logger.LogInformation("开始生成视频分段");
 
             if (!_viewModel.IsTimelineViewModelValid())
             {
-                _logger.LogWarning("生成切分点时CurrentVideo为null");
+                _logger.LogWarning("生成视频分段时CurrentVideo为null");
                 return;
             }
 
-            _logger.LogInformation($"更新切分点显示: {_viewModel.SplitPoints.Count} 个切分点");
+            // 清空现有分段边框
+            ClearVideoSegments();
 
-            // 清空现有切分点
-            ClearSplitPoints();
+            var pixelsPerSecond = _viewModel.PixelsPerSecond;
+            var segments = _viewModel.TimelineSegments;
 
-            // 添加新的切分点
-            foreach (var time in _viewModel.SplitPoints)
+            _logger.LogInformation($"生成 {segments.Count} 个视频分段");
+
+            foreach (var segment in segments)
             {
-                AddSplitPoint(time);
+                var startX = segment.StartTime.TotalSeconds * pixelsPerSecond;
+                var endX = segment.EndTime.TotalSeconds * pixelsPerSecond;
+                var width = endX - startX;
+
+                // 创建分段边框
+                var segmentBorder = new Border
+                {
+                    Background = Brushes.Transparent,
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(128, 128, 128, 128)),
+                    BorderThickness = new Thickness(2),
+                    Width = width,
+                    Height = VideoSegmentsCanvas.ActualHeight > 0 ? VideoSegmentsCanvas.ActualHeight : 60,
+                    Cursor = Cursors.Hand,
+                    Tag = segment // 存储分段信息
+                };
+
+                // 添加点击事件
+                segmentBorder.MouseLeftButtonDown += SegmentBorder_MouseLeftButtonDown;
+
+                Canvas.SetLeft(segmentBorder, startX);
+                Canvas.SetTop(segmentBorder, 0);
+
+                VideoSegmentsCanvas.Children.Add(segmentBorder);
+                _segmentBorders.Add(segmentBorder);
+
+                _logger.LogDebug($"创建视频分段: {segment.StartTime:mm\\:ss} - {segment.EndTime:mm\\:ss}, 位置: {startX}px, 宽度: {width}px");
             }
+
+            _logger.LogInformation($"视频分段生成完成，共{segments.Count}个分段");
+        }
+
+        private void SegmentBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border segmentBorder && segmentBorder.Tag is TimelineSegment segment)
+            {
+                _logger.LogInformation($"视频分段被点击: {segment.StartTime:mm\\:ss} - {segment.EndTime:mm\\:ss}");
+
+                // 更新选中状态 - 使用命令执行
+                _viewModel.SelectSegmentCommand.Execute(segment);
+
+                // 更新UI显示选中状态
+                UpdateSegmentSelection();
+
+                e.Handled = true;
+            }
+        }
+
+        private void UpdateSegmentSelection()
+        {
+            foreach (var border in _segmentBorders)
+            {
+                if (border.Tag is TimelineSegment segment)
+                {
+                    // 根据选中状态更新边框样式
+                    if (segment == _viewModel.SelectedSegment)
+                    {
+                        border.BorderBrush = Brushes.White;
+                        border.BorderThickness = new Thickness(3);
+                    }
+                    else
+                    {
+                        border.BorderBrush = new SolidColorBrush(Color.FromArgb(128, 128, 128, 128));
+                        border.BorderThickness = new Thickness(2);
+                    }
+                }
+            }
+        }
+
+        private void ClearVideoSegments()
+        {
+            foreach (var border in _segmentBorders)
+            {
+                VideoSegmentsCanvas.Children.Remove(border);
+            }
+            _segmentBorders.Clear();
         }
 
         #endregion
@@ -496,57 +639,6 @@ namespace VideoCutTool.WPF.Views.Controls
             }
         }
 
-        // 切分点功能
-        public void AddSplitPoint(TimeSpan time)
-        {
-            if (!_viewModel.IsTimelineViewModelValid())
-            {
-                _logger.LogWarning("添加切分点时CurrentVideo为null");
-                return;
-            }
-
-            _logger.LogInformation($"添加切分点: {time:mm\\:ss\\.f}");
-
-            var pixelsPerSecond = _viewModel.PixelsPerSecond;
-            var x = time.TotalSeconds * pixelsPerSecond;
-
-            var splitLine = new Line
-            {
-                X1 = x-1,
-                Y1 = 0,
-                X2 = x-1,
-                Y2 = SplitersContainer.ActualHeight,
-                Stroke = Brushes.Red,
-                StrokeThickness = 3,
-            };
-
-            _logger.LogInformation($"切分点位置: {x}, 高度: {SplitersContainer.ActualHeight}");
-
-            SplitPointsCanvas.Children.Add(splitLine);
-            _splitPoints.Add(splitLine);
-        }
-
-        public void RemoveSplitPoint(TimeSpan time)
-        {
-            _logger.LogInformation($"移除切分点: {time:mm\\:ss\\.f}");
-
-            var pixelsPerSecond = _viewModel.PixelsPerSecond;
-            var targetX = Math.Round(time.TotalSeconds * pixelsPerSecond);
-
-            // 查找并移除对应的切分线
-            for (int i = _splitPoints.Count - 1; i >= 0; i--)
-            {
-                var splitLine = _splitPoints[i];
-                if (Math.Abs(splitLine.X1 - targetX) < 1.0) // 允许1像素的误差
-                {
-                    SplitPointsCanvas.Children.Remove(splitLine);
-                    _splitPoints.RemoveAt(i);
-                    _logger.LogInformation($"移除切分线: X={splitLine.X1}");
-                    break;
-                }
-            }
-        }
-
         #region ITimelineControlNotifyHandler
 
         public void RefreshControlContent()
@@ -562,17 +654,12 @@ namespace VideoCutTool.WPF.Views.Controls
         {
             _logger.LogInformation("更新切分点和视频段");
 
-            // 重新生成切分点
-            GenerateSplitPoints();
+            // 重新生成视频分段
+            GenerateVideoSegments();
         }
 
         #endregion
 
-        public void ClearSplitPoints()
-        {
-            SplitPointsCanvas.Children.Clear();
-            _splitPoints.Clear();
-        }
 
         #endregion
 
@@ -711,18 +798,28 @@ namespace VideoCutTool.WPF.Views.Controls
                 return;
             }
 
-            _logger.LogInformation($"播放头鼠标按下事件触发 - 位置: {e.GetPosition(PlayheadCanvas)}, 按钮: {e.ChangedButton}");
+            // 检查点击的是否是播放头元素
+            var hitElement = e.OriginalSource as FrameworkElement;
+            if (hitElement != null && (hitElement.Name == "PlayheadLine" || hitElement.Name == "PlayheadTopBlock"))
+            {
+                _logger.LogInformation($"播放头元素被点击 - 元素: {hitElement.Name}, 位置: {e.GetPosition(PlayheadCanvas)}");
 
-            _isDraggingPlayhead = true;
-            _dragStartPoint = e.GetPosition(PlayheadCanvas);
-            _dragStartX = PlayheadLine.X1;
+                _isDraggingPlayhead = true;
+                _dragStartPoint = e.GetPosition(PlayheadCanvas);
+                _dragStartX = PlayheadLine.X1;
 
-            _logger.LogInformation($"开始拖拽 - 起始点: {_dragStartPoint}, 起始X: {_dragStartX}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
+                _logger.LogInformation($"开始拖拽 - 起始点: {_dragStartPoint}, 起始X: {_dragStartX}, 当前视频: {_viewModel.CurrentVideo?.FilePath ?? "null"}");
 
-            PlayheadCanvas.CaptureMouse();
-            e.Handled = true;
+                PlayheadCanvas.CaptureMouse();
+                e.Handled = true;
 
-            _logger.LogInformation("播放头拖拽开始，鼠标已捕获");
+                _logger.LogInformation("播放头拖拽开始，鼠标已捕获");
+            }
+            else
+            {
+                _logger.LogDebug($"点击的不是播放头元素，忽略拖拽 - 元素: {hitElement?.Name ?? "null"}");
+                // 不处理事件，让其他元素可以接收点击
+            }
         }
 
         private void Playhead_MouseMove(object sender, MouseEventArgs e)
