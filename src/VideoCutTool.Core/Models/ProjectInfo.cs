@@ -64,13 +64,6 @@ namespace VideoCutTool.Core.Models
         private List<TimelineSegment> _timelineSegments = new();
 
         /// <summary>
-        /// 切分点列表
-        /// </summary>
-        [JsonPropertyName("timelineSegments")]
-        [ObservableProperty]
-        private List<TimeSpan> _splitPoints = new();
-
-        /// <summary>
         /// 缩略图缓存路径
         /// </summary>
         [JsonPropertyName("thumbnailCachePath")]
@@ -111,7 +104,6 @@ namespace VideoCutTool.Core.Models
             VideoInfo = null;
             Volume = 50.0;
             TimelineSegments.Clear();
-            SplitPoints.Clear();
             ThumbnailCachePath = string.Empty;
             ExportSettings = new ExportSettings();
             CreatedDate = DateTime.Now;

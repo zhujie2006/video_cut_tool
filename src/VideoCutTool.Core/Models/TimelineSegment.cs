@@ -30,13 +30,6 @@ namespace VideoCutTool.Core.Models
         private TimeSpan _endTime;
         
         /// <summary>
-        /// 缩略图路径
-        /// </summary>
-        [ObservableProperty]
-        [JsonPropertyName("thumbnailPath")]
-        private string _thumbnailPath = string.Empty;
-        
-        /// <summary>
         /// 是否被选中
         /// </summary>
         [ObservableProperty]
@@ -58,27 +51,9 @@ namespace VideoCutTool.Core.Models
         private DateTime _createdDate = DateTime.Now;
 
         /// <summary>
-        /// 片段ID
-        /// </summary>
-        [JsonPropertyName("id")]
-        public Guid Id { get; set; } = Guid.NewGuid();
-
-        /// <summary>
         /// 片段持续时间
         /// </summary>
         [JsonPropertyName("duration")]
         public TimeSpan Duration => EndTime - StartTime;
-
-        /// <summary>
-        /// 片段描述
-        /// </summary>
-        [JsonPropertyName("description")]
-        public string Description { get; set; } = string.Empty;
-
-        /// <summary>
-        /// 标签
-        /// </summary>
-        [JsonPropertyName("tags")]
-        public List<string> Tags { get; set; } = new();
     }
 }

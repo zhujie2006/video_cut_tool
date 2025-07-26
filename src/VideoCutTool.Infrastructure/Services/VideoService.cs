@@ -151,6 +151,66 @@ namespace VideoCutTool.Infrastructure.Services
             var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, args, progress);
             return result.Success;
         }
+
+        public async Task<bool> ExportMultipleSegmentsAsync(string inputPath, string outputPath, IEnumerable<TimelineSegment> segments, ExportSettings settings, IProgress<int>? progress = null)
+        {
+            _logger.Information("开始导出多个视频片段 - 输入: {InputPath}, 输出: {OutputPath}, 片段数量: {SegmentCount}", 
+                inputPath, outputPath, segments.Count());
+
+            try
+            {
+                // 过滤出未删除的片段并按开始时间排序
+                var activeSegments = segments.Where(s => !s.IsDeleted).OrderBy(s => s.StartTime).ToList();
+                
+                if (activeSegments.Count == 0)
+                {
+                    _logger.Warning("没有活跃的片段可以导出");
+                    return false;
+                }
+
+                _logger.Information("准备导出 {ActiveSegmentCount} 个活跃片段", activeSegments.Count);
+
+                // 如果只有一个片段，直接导出
+                if (activeSegments.Count == 1)
+                {
+                    var segment = activeSegments[0];
+                    var duration = segment.EndTime - segment.StartTime;
+                    return await ExportSegmentAsync(inputPath, outputPath, segment.StartTime, duration, settings, progress);
+                }
+
+                // 多个片段需要拼接，使用concat demuxer
+                var concatFile = await CreateConcatFileAsync(inputPath, activeSegments);
+                if (string.IsNullOrEmpty(concatFile))
+                {
+                    _logger.Error("创建concat文件失败");
+                    return false;
+                }
+
+                try
+                {
+                    // 使用concat demuxer拼接视频
+                    var args = BuildConcatArgs(concatFile, outputPath, settings);
+                    var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, args, progress);
+                    
+                    _logger.Information("多片段导出完成 - 成功: {Success}", result.Success);
+                    return result.Success;
+                }
+                finally
+                {
+                    // 清理临时文件
+                    if (File.Exists(concatFile))
+                    {
+                        File.Delete(concatFile);
+                        _logger.Debug("删除临时concat文件: {ConcatFile}", concatFile);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "导出多个视频片段时发生异常");
+                return false;
+            }
+        }
         
         public async Task<string> GenerateThumbnailAsync(string videoPath, double time)
         {
@@ -618,6 +678,65 @@ namespace VideoCutTool.Infrastructure.Services
             }
             
             return waveform;
+        }
+
+        private async Task<string> CreateConcatFileAsync(string inputPath, List<TimelineSegment> segments)
+        {
+            try
+            {
+                var concatFile = Path.Combine(_tempDirectory, $"concat_{Guid.NewGuid()}.txt");
+                
+                using var writer = new StreamWriter(concatFile);
+                
+                foreach (var segment in segments)
+                {
+                    var duration = segment.EndTime - segment.StartTime;
+                    // 格式: file 'input.mp4'
+                    //       inpoint 00:00:30.000
+                    //       outpoint 00:01:45.000
+                    await writer.WriteLineAsync($"file '{inputPath}'");
+                    await writer.WriteLineAsync($"inpoint {segment.StartTime:hh\\:mm\\:ss\\.fff}");
+                    await writer.WriteLineAsync($"outpoint {segment.EndTime:hh\\:mm\\:ss\\.fff}");
+                }
+                
+                _logger.Debug("创建concat文件: {ConcatFile}", concatFile);
+                return concatFile;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "创建concat文件时发生异常");
+                return string.Empty;
+            }
+        }
+
+        private string BuildConcatArgs(string concatFile, string outputPath, ExportSettings settings)
+        {
+            var args = $"-f concat -safe 0 -i \"{concatFile}\"";
+            
+            // 根据质量设置编码参数
+            if (settings.OutputQuality >= VideoFormatConst.QualityHighValue)
+            {
+                args += " -vf scale=1920:1080 -c:v libx264 -crf 18";
+            }
+            else if (settings.OutputQuality >= VideoFormatConst.QualityMediumValue)
+            {
+                args += " -vf scale=1280:720 -c:v libx264 -crf 23";
+            }
+            else
+            {
+                args += " -vf scale=854:480 -c:v libx264 -crf 28";
+            }
+            
+            // 设置帧率
+            args += $" -r {settings.FrameRate}";
+            
+            // 设置音频编码
+            args += " -c:a aac -b:a 128k";
+            
+            // 输出文件
+            args += $" \"{outputPath}\"";
+            
+            return args;
         }
     }
 } 

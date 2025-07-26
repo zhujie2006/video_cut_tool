@@ -52,5 +52,16 @@ namespace VideoCutTool.Core.Interfaces
         /// <param name="dataPointsPerSecond">每秒数据点数量</param>
         /// <returns>音频波形数据</returns>
         Task<List<double>> GenerateAudioWaveformAsync(string videoPath, double duration, int dataPointsPerSecond = 10);
+
+        /// <summary>
+        /// 导出多个视频片段（拼接导出）
+        /// </summary>
+        /// <param name="inputPath">输入文件路径</param>
+        /// <param name="outputPath">输出文件路径</param>
+        /// <param name="segments">要导出的片段列表</param>
+        /// <param name="settings">导出设置</param>
+        /// <param name="progress">进度报告</param>
+        /// <returns>是否成功</returns>
+        Task<bool> ExportMultipleSegmentsAsync(string inputPath, string outputPath, IEnumerable<TimelineSegment> segments, ExportSettings settings, IProgress<int>? progress = null);
     }
 }

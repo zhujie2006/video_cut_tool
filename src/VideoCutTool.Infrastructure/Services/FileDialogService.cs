@@ -72,14 +72,14 @@ namespace VideoCutTool.Infrastructure.Services
             }
         }
 
-        public string? SaveProjectFile()
+        public string? SaveProjectFile(string defaultName)
         {
             var saveFileDialog = new SaveFileDialog
             {
                 Title = "保存项目文件",
                 Filter = "视频剪辑项目文件|*.vct|所有文件|*.*",
                 DefaultExt = "vct",
-                FileName = "新项目.vct"
+                FileName = $"{defaultName}.vct"
             };
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)

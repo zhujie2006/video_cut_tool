@@ -27,8 +27,9 @@ namespace VideoCutTool.Core.Interfaces
         
         /// <summary>
         /// 保存项目文件
+        /// <param name="defaultName">默认文件名</param>
         /// </summary>
-        string? SaveProjectFile();
+        string? SaveProjectFile(string defaultName);
         
         /// <summary>
         /// 打开项目文件
