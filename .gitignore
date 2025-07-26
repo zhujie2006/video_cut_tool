@@ -363,4 +363,5 @@ FodyWeavers.xsd
 
 # Application specific
 logs/
-temp/ 
+temp/
+.VSCodeConter/ 

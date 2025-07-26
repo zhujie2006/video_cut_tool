@@ -48,7 +48,7 @@ namespace VideoCutTool.Core.Models
         /// </summary>
         [ObservableProperty]
         [JsonPropertyName("isDeleted")]
-        private bool _isDeleted;
+        private bool _isDeleted = false;
         
         /// <summary>
         /// 创建日期

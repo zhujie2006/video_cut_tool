@@ -512,9 +512,9 @@ namespace VideoCutTool.WPF.Views.Controls
             ClearVideoSegments();
 
             var pixelsPerSecond = _viewModel.PixelsPerSecond;
-            var segments = _viewModel.TimelineSegments;
+            var segments = _viewModel.TimelineSegments.Where(s => !s.IsDeleted).ToList(); // 只处理未删除的片段
 
-            _logger.LogInformation($"生成 {segments.Count} 个视频分段");
+            _logger.LogInformation($"生成 {segments.Count} 个活跃视频分段");
 
             foreach (var segment in segments)
             {
@@ -534,6 +534,23 @@ namespace VideoCutTool.WPF.Views.Controls
                     Tag = segment // 存储分段信息
                 };
 
+                // 创建名称标签
+                var nameLabel = new TextBlock
+                {
+                    Text = segment.Name,
+                    Foreground = Brushes.White,
+                    Margin = new Thickness(2, 2, 2, 2),
+                    FontSize = 10,
+                    FontWeight = FontWeights.Normal,
+                    Background = new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)), // 半透明黑色背景
+                    Padding = new Thickness(2, 1, 2, 1),
+                    VerticalAlignment = VerticalAlignment.Top,
+                    HorizontalAlignment = HorizontalAlignment.Left
+                };
+
+                // 将名称标签添加到边框的左上角
+                segmentBorder.Child = nameLabel;
+
                 // 添加点击事件
                 segmentBorder.MouseLeftButtonDown += SegmentBorder_MouseLeftButtonDown;
 
@@ -543,10 +560,10 @@ namespace VideoCutTool.WPF.Views.Controls
                 VideoSegmentsCanvas.Children.Add(segmentBorder);
                 _segmentBorders.Add(segmentBorder);
 
-                _logger.LogDebug($"创建视频分段: {segment.StartTime:mm\\:ss} - {segment.EndTime:mm\\:ss}, 位置: {startX}px, 宽度: {width}px");
+                _logger.LogDebug($"创建视频分段: {segment.Name} ({segment.StartTime:mm\\:ss} - {segment.EndTime:mm\\:ss}), 位置: {startX}px, 宽度: {width}px");
             }
 
-            _logger.LogInformation($"视频分段生成完成，共{segments.Count}个分段");
+            _logger.LogInformation($"视频分段生成完成，共{segments.Count}个活跃分段");
         }
 
         private void SegmentBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -569,7 +586,7 @@ namespace VideoCutTool.WPF.Views.Controls
         {
             foreach (var border in _segmentBorders)
             {
-                if (border.Tag is TimelineSegment segment)
+                if (border.Tag is TimelineSegment segment && !segment.IsDeleted)
                 {
                     // 根据选中状态更新边框样式
                     if (segment == _viewModel.SelectedSegment)

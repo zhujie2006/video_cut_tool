@@ -64,9 +64,6 @@ namespace VideoCutTool.WPF.ViewModels
         private bool _canClear = false;
 
         [ObservableProperty]
-        private ObservableCollection<TimeSpan> _splitPoints = new ObservableCollection<TimeSpan>();
-
-        [ObservableProperty]
         private TimelineSegment? _selectedSegment;
 
         [ObservableProperty]
@@ -105,11 +102,6 @@ namespace VideoCutTool.WPF.ViewModels
                 // 设置时间轴片段
                 TimelineSegments = new ObservableCollection<TimelineSegment>(projectInfo.TimelineSegments);
 
-                // 设置切分点
-                SplitPoints = new ObservableCollection<TimeSpan>(projectInfo.SplitPoints);
-
-                UpdateSegmentsFromSplitPoints(false);
-
                 // 更新状态消息
                 UINotifier.NotifyStatusMessage($"已加载项目: {projectInfo.Name}");
 
@@ -134,6 +126,12 @@ namespace VideoCutTool.WPF.ViewModels
             
             try
             {
+
+                // 如果没有片段，创建完整视频片段
+                if (TimelineSegments.Count == 0 && CurrentVideo != null)
+                {
+                    CreateFullVideoSegment();
+                }
                 // 重新计算时间轴宽度
                 var duration = CurrentVideo.Duration.TotalSeconds;
                 TotalWidth = duration * PixelsPerSecond * ZoomLevel;
@@ -212,18 +210,42 @@ namespace VideoCutTool.WPF.ViewModels
 
             CanUndo = _undoStack.Count > 0;
             CanRedo = _redoStack.Count > 0;
-            CanDelete = SelectedSegment != null; // 检查
-            CanClear = SplitPoints.Count > 0; // 修改为检查切分点数量
+            CanDelete = SelectedSegment != null; // 检查是否有选中的片段
+            CanClear = TimelineSegments.Count > 1; // 检查是否有多个片段（除了完整视频片段）
 
             _logger.Debug("命令状态更新 - 撤销: {OldUndo} -> {NewUndo}, 重做: {OldRedo} -> {NewRedo}, 删除: {OldDelete} -> {NewDelete}, 清空: {OldClear} -> {NewClear}",
                 oldCanUndo, CanUndo, oldCanRedo, CanRedo, oldCanDelete, CanDelete, oldCanClear, CanClear);
         }
 
-        public void ClearSplitPoints()
+        private void CreateFullVideoSegment()
         {
-            SplitPoints.Clear();
-            _logger.Information("清空所有切分点");
-            UINotifier.NotifyStatusMessage("已清空所有切分点");
+            if (CurrentVideo == null) return;
+
+            var fullSegment = new TimelineSegment
+            {
+                Name = CurrentVideo.Name,
+                StartTime = TimeSpan.Zero,
+                EndTime = CurrentVideo.Duration,
+                CreatedDate = DateTime.Now,
+                IsDeleted = false
+            };
+
+            TimelineSegments.Add(fullSegment);
+            _logger.Information($"创建完整视频片段: {fullSegment.Name} (0:00 - {CurrentVideo.Duration:mm\\:ss})");
+        }
+
+        public void ClearAllSegments()
+        {
+            // 清空所有片段
+            TimelineSegments.Clear();
+            
+            // 重新创建完整视频片段
+            CreateFullVideoSegment();
+            
+            _logger.Information("清空所有片段并恢复完整视频片段");
+            UINotifier.NotifyStatusMessage("已清空所有片段并恢复完整视频");
+            UpdateCommandStates();
+            ControlNotifier.RefreshSegmentAndSplitPoints();
         }
 
         #endregion
@@ -291,117 +313,99 @@ namespace VideoCutTool.WPF.ViewModels
             }
         }
 
-        private void UpdateSegmentsFromSplitPoints(bool bUpdateContent)
-        {
-            if (CurrentVideo == null) return;
-
-            _logger.Information("根据切分点更新视频分段");
-
-            // 清空现有片段
-            TimelineSegments.Clear();
-
-            // 排序切分点
-            var sortedSplitPoints = SplitPoints.OrderBy(sp => sp).ToList();
-
-            // 添加开始时间点（0秒）
-            var allTimePoints = new List<TimeSpan> { TimeSpan.Zero };
-            allTimePoints.AddRange(sortedSplitPoints);
-
-            // 添加结束时间点
-            allTimePoints.Add(CurrentVideo.Duration);
-
-            // 根据时间点创建片段
-            for (int i = 0; i < allTimePoints.Count - 1; i++)
-            {
-                var startTime = allTimePoints[i];
-                var endTime = allTimePoints[i + 1];
-
-                // 跳过零长度的片段
-                if (endTime <= startTime) continue;
-
-                var segment = new TimelineSegment
-                {
-                    Name = $"片段_{i + 1:D3}",
-                    StartTime = startTime,
-                    EndTime = endTime,
-                    CreatedDate = DateTime.Now
-                };
-
-                TimelineSegments.Add(segment);
-                _logger.Debug($"创建片段: {segment.Name} ({startTime:mm\\:ss\\.f} - {endTime:mm\\:ss\\.f})");
-            }
-
-            UINotifier.UpdateProjectInfo();
-            UINotifier.NotifyStatusMessage($"已根据 {sortedSplitPoints.Count} 个切分点创建 {TimelineSegments.Count} 个片段");
-
-            if (bUpdateContent)
-            {
-                ControlNotifier.RefreshControlContent();
-            }
-        }
-
-        public void AddSplitPoint(TimeSpan time)
+        
+        public void AddSegmentAtTime(TimeSpan time)
         {
             try
             {
                 if (CurrentVideo == null)
                 {
-                    _logger.Warning("尝试添加切分点但未导入视频");
+                    _logger.Warning("尝试切分视频但未导入视频");
                     UINotifier.NotifyStatusMessage("请先导入视频");
                     return;
                 }
 
                 // 检查时间是否在有效范围内
-                if (time < TimeSpan.Zero || time >= CurrentVideo.Duration)
+                if (time <= TimeSpan.Zero || time >= CurrentVideo.Duration)
                 {
-                    _logger.Warning($"切分点时间超出范围: {time:mm\\:ss\\.f}");
-                    UINotifier.NotifyStatusMessage("切分点时间超出视频范围");
+                    _logger.Warning($"切分时间超出范围: {time:mm\\:ss\\.f}");
+                    UINotifier.NotifyStatusMessage("切分时间超出视频范围");
                     return;
                 }
 
-                // 检查是否已存在相同时间的切分点
-                if (SplitPoints.Any(sp => Math.Abs((sp - time).TotalSeconds) < 0.1))
+                // 查找包含当前时间的片段
+                var existingSegment = TimelineSegments.FirstOrDefault(s => 
+                    s.StartTime <= time && 
+                    s.EndTime > time);
+
+                if (existingSegment == null)
                 {
-                    _logger.Information($"切分点已存在: {time:mm\\:ss\\.f}");
-                    UINotifier.NotifyStatusMessage("该位置已存在切分点");
+                    _logger.Warning($"未找到包含时间 {time:mm\\:ss\\.f} 的片段");
+                    UINotifier.NotifyStatusMessage("未找到包含该时间的片段");
                     return;
                 }
 
-                // 添加切分点
-                SplitPoints.Add(time);
-                UpdateSegmentsFromSplitPoints(false);
+                // 切分片段：删除原片段，创建两个新片段
+                var originalStartTime = existingSegment.StartTime;
+                var originalEndTime = existingSegment.EndTime;
+                var originalName = existingSegment.Name;
 
-                _logger.Information($"添加切分点成功: {time:mm\\:ss\\.f}");
-                UINotifier.NotifyStatusMessage($"已添加切分点: {time:mm\\:ss\\.f}");
+                // 删除原片段
+                TimelineSegments.Remove(existingSegment);
+
+                // 创建第一个片段（从原开始时间到切分时间）
+                var firstSegment = new TimelineSegment
+                {
+                    Name = $"{CurrentVideo.Name}_{originalStartTime:hh\\:mm\\:ss\\.ff}",
+                    StartTime = originalStartTime,
+                    EndTime = time,
+                    CreatedDate = DateTime.Now,
+                    IsDeleted = false
+                };
+
+                // 创建第二个片段（从切分时间到原结束时间）
+                var secondSegment = new TimelineSegment
+                {
+                    Name = $"{CurrentVideo.Name}_{time:hh\\:mm\\:ss\\.ff}",
+                    StartTime = time,
+                    EndTime = originalEndTime,
+                    CreatedDate = DateTime.Now,
+                    IsDeleted = false
+                };
+
+                TimelineSegments.Add(firstSegment);
+                TimelineSegments.Add(secondSegment);
+                UINotifier.UpdateProjectInfo();
+
+                _logger.Information($"切分片段成功: {originalName} -> {firstSegment.Name} + {secondSegment.Name}");
+                UINotifier.NotifyStatusMessage($"已切分片段: {firstSegment.Name} + {secondSegment.Name}");
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "添加切分点时发生异常");
-                UINotifier.NotifyStatusMessage($"添加切分点失败: {ex.Message}");
+                _logger.Error(ex, "切分片段时发生异常");
+                UINotifier.NotifyStatusMessage($"切分片段失败: {ex.Message}");
             }
         }
 
-        public void RemoveSplitPoint(TimeSpan curTime)
+        public void RemoveSegmentAtTime(TimeSpan curTime)
         {
-            bool bRemoved = false;
-            foreach (var time in SplitPoints)
-            {
-                if (Math.Abs((time - curTime).TotalSeconds) < 0.1)
-                {
-                    SplitPoints.Remove(time);
-                    bRemoved = true;
-                }
-            }
+            var segmentToRemove = TimelineSegments.FirstOrDefault(s => 
+                !s.IsDeleted && 
+                s.StartTime <= curTime && 
+                s.EndTime > curTime);
 
-            if (bRemoved)
+            if (segmentToRemove != null)
             {
-                _logger.Information($"移除切分点成功: {curTime:mm\\:ss\\.f}");
-                UINotifier.NotifyStatusMessage($"已移除切分点: {curTime:mm\\:ss\\.f}");
+                // 直接删除片段（硬删除）
+                TimelineSegments.Remove(segmentToRemove);
+                _logger.Information($"删除片段: {segmentToRemove.Name}");
+                UINotifier.NotifyStatusMessage($"已删除片段: {segmentToRemove.Name}");
+                UINotifier.UpdateProjectInfo();
             }
             else
             {
-                _logger.Warning($"未找到要移除的切分点: {curTime:mm\\:ss\\.f}");
-                UINotifier.NotifyStatusMessage("未找到指定的切分点");
+                _logger.Warning($"未找到要删除的片段: {curTime:mm\\:ss\\.f}");
+                UINotifier.NotifyStatusMessage("未找到指定的片段");
             }
         }
 
@@ -420,9 +424,6 @@ namespace VideoCutTool.WPF.ViewModels
             segment.IsSelected = true;
             SelectedSegment = segment;
 
-            // 不需要跳转
-            // UINotifier.SetCurrentTime(segment.StartTime);
-
             UpdateCommandStates();
             UINotifier.NotifyStatusMessage($"已选择片段: {segment.Name}");
         }
@@ -432,7 +433,7 @@ namespace VideoCutTool.WPF.ViewModels
         {
             _logger.Information("开始删除片段流程");
 
-            var selectedSegment = TimelineSegments.FirstOrDefault(s => s.IsSelected);
+            var selectedSegment = TimelineSegments.FirstOrDefault(s => s.IsSelected && !s.IsDeleted);
             if (selectedSegment == null)
             {
                 _logger.Warning("尝试删除片段但未选择任何片段");
@@ -444,25 +445,25 @@ namespace VideoCutTool.WPF.ViewModels
                 selectedSegment.Name, selectedSegment.StartTime, selectedSegment.EndTime);
 
             var segmentIndex = TimelineSegments.IndexOf(selectedSegment);
-            var segment = selectedSegment;
+            var segmentToRestore = selectedSegment;
 
             // 保存撤销操作
             _undoStack.Push(() =>
             {
-                TimelineSegments.Insert(segmentIndex, segment);
+                TimelineSegments.Insert(segmentIndex, segmentToRestore);
                 UINotifier.UpdateProjectInfo();
-                _logger.Debug("撤销操作：恢复片段 {SegmentName} 到位置 {SegmentIndex}", segment.Name, segmentIndex);
+                _logger.Debug("撤销操作：恢复片段 {SegmentName} 到位置 {SegmentIndex}", segmentToRestore.Name, segmentIndex);
             });
 
-            // 删除片段
+            // 直接删除片段
             TimelineSegments.Remove(selectedSegment);
             UINotifier.UpdateProjectInfo();
 
-            _logger.Information("片段删除成功，剩余片段数量: {RemainingSegments}", TimelineSegments.Count);
+            _logger.Information("片段删除成功");
             UINotifier.NotifyStatusMessage($"已删除片段: {selectedSegment.Name}");
 
-
-            // TODO: 更新，甚至完全去掉切分点的逻辑
+            // 刷新时间轴、缩略图、音频、视频片段
+            ControlNotifier.RefreshControlContent();
         }
 
         [RelayCommand]
@@ -515,65 +516,67 @@ namespace VideoCutTool.WPF.ViewModels
         [RelayCommand]
         private void ClearSegment()
         {
-            _logger.Information("开始清空切分点流程");
+            _logger.Information("开始清空所有片段流程");
 
-            if (SplitPoints.Count == 0)
+            var activeSegments = TimelineSegments.Where(s => !s.IsDeleted).ToList();
+            if (activeSegments.Count == 0)
             {
-                _logger.Warning("尝试清空切分点但当前没有切分点");
-                UINotifier.NotifyStatusMessage("当前没有切分点");
+                _logger.Warning("尝试清空片段但当前没有活跃片段");
+                UINotifier.NotifyStatusMessage("当前没有活跃片段");
                 return;
             }
 
             // 保存撤销操作
-            var oldSplitPoints = new ObservableCollection<TimeSpan>(SplitPoints);
+            var segmentsToRestore = activeSegments.ToList();
             _undoStack.Push(() =>
             {
-                SplitPoints = oldSplitPoints;
-                _logger.Debug("撤销操作：恢复 {Count} 个切分点", oldSplitPoints.Count);
+                // 清空当前片段
+                TimelineSegments.Clear();
+                // 恢复之前的片段
+                foreach (var segment in segmentsToRestore)
+                {
+                    TimelineSegments.Add(segment);
+                }
+                _logger.Debug("撤销操作：恢复 {Count} 个片段", segmentsToRestore.Count);
                 UpdateCommandStates();
-                UpdateSegmentsFromSplitPoints(false);
-
+                UINotifier.UpdateProjectInfo();
                 ControlNotifier.RefreshSegmentAndSplitPoints();
             });
 
-            ClearSplitPoints();
-            UpdateCommandStates();
-            UpdateSegmentsFromSplitPoints(false);
+            ClearAllSegments();
             ControlNotifier.RefreshSegmentAndSplitPoints();
 
-            _logger.Information("清空切分点成功");
-            UINotifier.NotifyStatusMessage("已清空所有切分点");
+            _logger.Information("清空所有片段成功");
+            UINotifier.NotifyStatusMessage("已清空所有片段并恢复完整视频");
         }
 
         [RelayCommand]
         private void SplitVideo()
         {
-            _logger.Information("开始切分视频流程");
+            _logger.Information("开始创建新片段流程");
 
             if (CurrentVideo == null)
             {
-                _logger.Warning("尝试切分视频但未导入视频");
+                _logger.Warning("尝试创建片段但未导入视频");
                 UINotifier.NotifyStatusMessage("请先导入视频");
                 return;
             }
 
             var curTime = UINotifier.GetCurrentTime();
-            // 在当前位置添加切分点
-            AddSplitPoint(curTime);
+            // 在当前位置添加新片段
+            AddSegmentAtTime(curTime);
 
             // 保存撤销操作
-            var splitTime = curTime;
+            var segmentTime = curTime;
             _undoStack.Push(() =>
             {
-                RemoveSplitPoint(splitTime);
-                _logger.Debug("撤销操作：移除切分点 {SplitTime}", splitTime);
+                // TODO: 恢复原来的片段，删除新增的两个片段
+                _logger.Debug("撤销操作：移除片段 {SegmentTime}", segmentTime);
                 UpdateCommandStates();
-                UpdateSegmentsFromSplitPoints(false);
                 ControlNotifier.RefreshSegmentAndSplitPoints();
             });
 
             UpdateCommandStates();
-            UpdateSegmentsFromSplitPoints(false);
             ControlNotifier.RefreshSegmentAndSplitPoints();
         }
 
