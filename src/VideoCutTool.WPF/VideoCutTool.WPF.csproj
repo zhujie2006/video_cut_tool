@@ -6,11 +6,30 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyTitle>Video Cut Tool</AssemblyTitle>
+    <AssemblyTitle>AI探趣星船长 - 视频剪辑工具</AssemblyTitle>
     <AssemblyDescription>A professional video editing tool for Windows</AssemblyDescription>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
+    <ApplicationIcon>Resources\Icons\app-icon.ico</ApplicationIcon>
+    
+    <!-- 发布配置 -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishTrimmed>false</PublishTrimmed>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    
+    <!-- 应用程序信息 -->
+    <Company>AI探趣星船长</Company>
+    <Product>视频剪辑工具</Product>
+    <Copyright>Copyright © 2025 AI探趣星船长</Copyright>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\Icons\app-icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- UI Library -->
@@ -50,6 +69,9 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Include="appsettings.json">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

@@ -8,7 +8,7 @@
         xmlns:controls="clr-namespace:VideoCutTool.WPF.Views.Controls"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
-        Title="视频剪辑工具 - Video Cut Tool"
+        Title="AI探趣星船长 - 视频剪辑工具"
         Width="1200" Height="800"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource AppBackgroundBrush}"
