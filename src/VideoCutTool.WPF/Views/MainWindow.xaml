@@ -6,6 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:VideoCutTool.WPF.Converters"
         xmlns:controls="clr-namespace:VideoCutTool.WPF.Views.Controls"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="视频剪辑工具 - Video Cut Tool"
         Width="1200" Height="800"
@@ -17,33 +18,58 @@
         KeyDown="Window_KeyDown">
 
     <Window.Resources>
-        <!-- 最近导出项目样式 -->
-        <Style x:Key="RecentExportItemStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#20FFFFFF" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/VideoCutTool.WPF;component/Resources/Styles/CommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <!-- 音量转换器 -->
-        <local:VolumeConverter x:Key="VolumeConverter" />
+            <!-- 最近导出项目样式 -->
+            <Style x:Key="RecentExportItemStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#20FFFFFF" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 音量转换器 -->
+            <local:VolumeConverter x:Key="VolumeConverter" />
+            
+            <!-- 布尔值转换器 -->
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            
+            <!-- 反向布尔值转换器 -->
+            <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+        </ResourceDictionary>        
     </Window.Resources>
     
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="4" x:Name="TimelineSeparatorRow" />
-            <RowDefinition Height="200" x:Name="TimelineRow" MinHeight="160" MaxHeight="300" />
-            <RowDefinition Height="1" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>        
+        <!-- 全屏导出进度覆盖层 -->
+        <Grid x:Name="ExportProgressOverlay" 
+              Background="#80000000" 
+              Visibility="{Binding IsExporting, Converter={StaticResource BooleanToVisibilityConverter}}"
+              Panel.ZIndex="1000">
+            <!-- MaterialDesign 官方圆环进度条 -->
+            <ProgressBar VerticalAlignment="Center" HorizontalAlignment="Center"
+                Value="{Binding ExportProgress}" Maximum="100" Foreground="White"
+                IsIndeterminate="True" Width="100" Height="100"
+                Style="{StaticResource CustomCircularProgressBar}" />
+        </Grid>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="4" x:Name="TimelineSeparatorRow" />
+                <RowDefinition Height="200" x:Name="TimelineRow" MinHeight="160" MaxHeight="300" />
+                <RowDefinition Height="1" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>        
         
         <!-- 视频区域下方分隔线 -->
         <Border Grid.Row="3" Background="{StaticResource SeparatorBrush}" />
@@ -113,14 +139,14 @@
 
                         <!-- 播放控制按钮 -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Button Command="{Binding PreviousFrameCommand}" Style="{StaticResource PlayControlButtonStyle}">
-                                <materialDesign:PackIcon Kind="SkipPrevious" Width="20" Height="20" />
+                            <Button Command="{Binding PreviousFrameCommand}" Style="{StaticResource PlayControlButtonStyle}" ToolTip="跳转 5 秒前">
+                                <materialDesign:PackIcon Kind="Rewind5" Width="20" Height="20" />
                             </Button>
                             <Button Command="{Binding PlayPauseCommand}" Style="{StaticResource PlayControlButtonStyle}">
                                 <materialDesign:PackIcon Kind="{Binding PlayPauseIcon}" Width="20" Height="20" />
                             </Button>
-                            <Button Command="{Binding NextFrameCommand}" Style="{StaticResource PlayControlButtonStyle}">
-                                <materialDesign:PackIcon Kind="SkipNext" Width="20" Height="20" />
+                            <Button Command="{Binding NextFrameCommand}" Style="{StaticResource PlayControlButtonStyle}" ToolTip="跳转 5 秒后">
+                                <materialDesign:PackIcon Kind="FastForward5" Width="20" Height="20" />
                             </Button>                            
                         </StackPanel>
 
@@ -194,6 +220,7 @@
 
                         <Button Content="导出" Margin="0,16,0,0" 
                                 Command="{Binding ExportCommand}"
+                                IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBooleanConverter}}"
                                 Background="{StaticResource PrimaryButtonBrush}" Foreground="{StaticResource PrimaryTextBrush}" />
                     </StackPanel>
 
@@ -256,6 +283,7 @@
         <materialDesign:ColorZone Grid.Row="4" Mode="PrimaryLight" Padding="16,4" Style="{StaticResource CustomColorZoneStyle}">
             <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
         </materialDesign:ColorZone>
+        </Grid>
     </Grid>
     
 </Window>

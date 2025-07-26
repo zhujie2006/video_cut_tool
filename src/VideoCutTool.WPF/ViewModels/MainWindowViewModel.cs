@@ -87,6 +87,12 @@ namespace VideoCutTool.WPF.ViewModels
         [ObservableProperty]
         private bool _isPlaying = false;
 
+        [ObservableProperty]
+        private bool _isExporting = false;
+
+        [ObservableProperty]
+        private int _exportProgress = 0;
+
         #endregion
 
         #region 命令
@@ -210,15 +216,43 @@ namespace VideoCutTool.WPF.ViewModels
         [RelayCommand]
         private void PreviousFrame()
         {
-            StatusMessage = "上一帧功能待实现";
-            // TODO: 实现上一帧功能
+            if (VideoInfo == null)
+            {
+                StatusMessage = "请先导入视频";
+                return;
+            }
+            
+            // 跳转 5 秒前
+            var newTime = CurrentTime.Subtract(TimeSpan.FromSeconds(5));
+            if (newTime < TimeSpan.Zero)
+            {
+                newTime = TimeSpan.Zero;
+            }
+            
+            SetCurrentTime(newTime);
+            StatusMessage = $"跳转到 {newTime:hh\\:mm\\:ss}";
+            _logger.Information("跳转 5 秒前: {NewTime}", newTime);
         }
 
         [RelayCommand]
         private void NextFrame()
         {
-            StatusMessage = "下一帧功能待实现";
-            // TODO: 实现下一帧功能
+            if (VideoInfo == null)
+            {
+                StatusMessage = "请先导入视频";
+                return;
+            }
+            
+            // 跳转 5 秒后
+            var newTime = CurrentTime.Add(TimeSpan.FromSeconds(5));
+            if (newTime > VideoInfo.Duration)
+            {
+                newTime = VideoInfo.Duration;
+            }
+            
+            SetCurrentTime(newTime);
+            StatusMessage = $"跳转到 {newTime:hh\\:mm\\:ss}";
+            _logger.Information("跳转 5 秒后: {NewTime}", newTime);
         }
 
         [RelayCommand]
@@ -243,7 +277,7 @@ namespace VideoCutTool.WPF.ViewModels
             try
             {
                 // 选择保存路径
-                var filePath = _fileDialogService.SaveProjectFile();
+                var filePath = _fileDialogService.SaveProjectFile(VideoInfo?.Name ?? "新项目");
                 if (string.IsNullOrEmpty(filePath))
                 {
                     _logger.Information("用户取消保存项目");
@@ -383,96 +417,105 @@ namespace VideoCutTool.WPF.ViewModels
             
             try
             {
-                _logger.Information("准备导出 {SegmentCount} 个片段", ProjectInfo.TimelineSegments.Count);
-                
-                // 选择输出文件夹
-                var outputFolder = _fileDialogService.SelectFolder();
-                if (string.IsNullOrEmpty(outputFolder))
+                // 获取活跃的片段
+                var activeSegments = ProjectInfo.TimelineSegments.Where(s => !s.IsDeleted).ToList();
+                if (activeSegments.Count == 0)
                 {
-                    _logger.Information("用户取消选择输出文件夹");
-                    StatusMessage = "未选择输出文件夹";
+                    _logger.Warning("没有活跃的片段可以导出");
+                    StatusMessage = "没有可导出的片段";
                     return;
                 }
                 
-                _logger.Information("选择输出文件夹: {OutputFolder}", outputFolder);
+                _logger.Information("准备导出 {SegmentCount} 个活跃片段", activeSegments.Count);
                 
-                StatusMessage = "正在导出视频片段...";
+                // 获取输出文件路径
+                var defaultFileName = VideoInfo?.Name ?? "导出视频";
+                var filter = $"{SelectedExportFormat} 文件 (*.{SelectedExportFormat.ToLower()})|*.{SelectedExportFormat.ToLower()}|所有文件 (*.*)|*.*";
+                var outputPath = _fileDialogService.SelectSaveFile(defaultFileName, filter);
+                if (string.IsNullOrEmpty(outputPath))
+                {
+                    _logger.Information("用户取消了导出操作");
+                    return;
+                }
                 
+                _logger.Information("开始导出视频 - 输出路径: {OutputPath}, 片段数量: {SegmentCount}", outputPath, activeSegments.Count);
+                
+                // 设置导出状态
+                IsExporting = true;
+                ExportProgress = 0;
+                
+                // 创建进度报告
                 var progress = new Progress<int>(percent =>
                 {
-                    StatusMessage = $"导出进度: {percent}%";
+                    ExportProgress = percent;
+                    StatusMessage = $"正在导出视频... {percent}%";
                     _logger.Debug("导出进度: {Progress}%", percent);
                 });
                 
+                // 获取导出设置
                 var exportSettings = new ExportSettings
                 {
                     Format = SelectedExportFormat,
                     OutputQuality = ParseQuality(SelectedExportQuality),
                     FrameRate = ParseFrameRate(SelectedFrameRate),
+                    MaintainOriginalResolution = true,
+                    MaintainOriginalFrameRate = true
                 };
                 
                 _logger.Information("导出设置 - 格式: {Format}, 质量: {Quality}, 帧率: {FrameRate}", 
                     exportSettings.Format, exportSettings.OutputQuality, exportSettings.FrameRate);
                 
-                var successCount = 0;
-                foreach (var segment in ProjectInfo.TimelineSegments)
+                // 执行多片段拼接导出
+                var success = await _videoService.ExportMultipleSegmentsAsync(
+                    VideoInfo.FilePath, 
+                    outputPath, 
+                    activeSegments, 
+                    exportSettings, 
+                    progress);
+                
+                if (success)
                 {
-                    var outputFileName = $"{segment.Name}.{SelectedExportFormat.ToLower()}";
-                    var outputPath = Path.Combine(outputFolder, outputFileName);
+                    _logger.Information("视频导出成功: {OutputPath}", outputPath);
+                    StatusMessage = $"视频导出成功: {Path.GetFileName(outputPath)}";
                     
-                    _logger.Information("开始导出片段 {SegmentName} 到 {OutputPath}", segment.Name, outputPath);
-                    
-                    var success = await _videoService.ExportSegmentAsync(
-                        VideoInfo.FilePath,
-                        outputPath,
-                        segment.StartTime,
-                        segment.Duration,
-                        exportSettings,
-                        progress
-                    );
-                    
-                    if (success)
+                    // 记录导出历史
+                    var recentExport = new RecentExport
                     {
-                        successCount++;
-                        _logger.Information("片段 {SegmentName} 导出成功", segment.Name);
-                        
-                        // 添加到最近导出列表
-                        var recentExport = new RecentExport
-                        {
-                            FilePath = outputPath,
-                            ExportTime = DateTime.Now,
-                            Format = SelectedExportFormat,
-                            FileSize = new FileInfo(outputPath).Length,
-                            ExportSettings = exportSettings,
-                            Status = "成功"
-                        };
-                        
-                        RecentExports.Insert(0, recentExport);
-                        
-                        // 保持最近导出列表不超过10个
-                        if (RecentExports.Count > 10)
-                        {
-                            RecentExports.RemoveAt(RecentExports.Count - 1);
-                        }
-                        
-                        _logger.Debug("已添加到最近导出列表，当前列表大小: {RecentExportsCount}", RecentExports.Count);
-                    }
-                    else
+                        FilePath = outputPath,
+                        ExportTime = DateTime.Now,
+                        Format = Path.GetExtension(outputPath).TrimStart('.'),
+                        FileSize = new FileInfo(outputPath).Length,
+                        ExportSettings = exportSettings,
+                        Status = "成功"
+                    };
+                    
+                    RecentExports.Insert(0, recentExport);
+                    
+                    // 保持最近导出列表不超过10个
+                    if (RecentExports.Count > 10)
                     {
-                        _logger.Error("片段 {SegmentName} 导出失败", segment.Name);
+                        RecentExports.RemoveAt(RecentExports.Count - 1);
                     }
+                    
+                    // 保存最近导出列表
+                    SaveRecentExports();
                 }
-                
-                _logger.Information("导出流程完成 - 成功: {SuccessCount}/{TotalCount}", successCount, ProjectInfo.TimelineSegments.Count);
-                StatusMessage = $"导出完成: {successCount}/{ProjectInfo.TimelineSegments.Count} 个片段";
-                
-                // 保存最近导出列表
-                SaveRecentExports();
+                else
+                {
+                    _logger.Error("视频导出失败");
+                    StatusMessage = "视频导出失败，请检查输出路径和设置";
+                }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "导出过程中发生异常");
+                _logger.Error(ex, "导出视频时发生异常");
                 StatusMessage = $"导出失败: {ex.Message}";
+            }
+            finally
+            {
+                // 重置导出状态
+                IsExporting = false;
+                ExportProgress = 0;
             }
         }
 
