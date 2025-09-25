@@ -342,6 +342,8 @@ namespace VideoCutTool.Infrastructure.Services
                 
                 _logger.Debug("启动进程");
                 process.Start();
+                // 将FFmpeg进程加入Job，确保主进程退出时子进程被终止
+                ProcessJob.TryAssign(process);
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 
