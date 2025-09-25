@@ -86,7 +86,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
                     <Grid>
-                        <Track x:Name="PART_Track" Grid.Row="0" IsDirectionReversed="true">
+                        <Track x:Name="PART_Track" Grid.Row="0" IsDirectionReversed="false">
                             <Track.Thumb>
                                 <Thumb x:Name="Thumb" Background="#60FFFFFF" 
                                    BorderBrush="Transparent" BorderThickness="0"
