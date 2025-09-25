@@ -120,11 +120,12 @@ namespace VideoCutTool.Infrastructure.Services
             try
             {
                 var duration = endTime - startTime;
+                // 将 -ss 放在 -i 之前以使用输入级快速seek，容错时回退
                 var arguments = $"-ss {startTime} -t {duration} -c copy";
                 
                 _logger.Debug("FFmpeg命令: {Arguments}", arguments);
                 
-                var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, $"-i \"{inputPath}\" {arguments} \"{outputPath}\"");
+                var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, $"-ss {startTime} -i \"{inputPath}\" -t {duration} -c copy \"{outputPath}\"");
                 
                 if (result.Success)
                 {
@@ -233,11 +234,12 @@ namespace VideoCutTool.Infrastructure.Services
                 }
                 
                 // 使用FFmpeg生成缩略图
+                // 输入级 -ss 可加速抓帧；添加 -hwaccel auto 尝试硬件解码（若可用）
                 var arguments = $"-ss {time} -vframes 1 -vf \"scale=160:90\" -y";
                 
                 _logger.Debug("FFmpeg缩略图命令: {Arguments}", arguments);
                 
-                var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, $"-i \"{videoPath}\" {arguments} \"{thumbnailPath}\"");
+                var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, $"-hwaccel auto -ss {time} -i \"{videoPath}\" -vframes 1 -vf \"scale=160:90\" -y \"{thumbnailPath}\"");
                 
                 if (result.Success && File.Exists(thumbnailPath))
                 {

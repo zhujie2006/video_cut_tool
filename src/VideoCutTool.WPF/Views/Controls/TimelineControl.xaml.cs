@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,6 +37,11 @@ namespace VideoCutTool.WPF.Views.Controls
         private bool _isDraggingPlayhead = false;
         private Point _dragStartPoint;
         private double _dragStartX;
+
+        // 缩略图虚拟化
+        private CancellationTokenSource? _thumbnailCts;
+        private System.Windows.Threading.DispatcherTimer? _scrollDebounceTimer;
+        private (int startIndex, int endIndex) _lastRenderedRange = (-1, -1);
 
         #endregion
 
@@ -85,6 +91,16 @@ namespace VideoCutTool.WPF.Views.Controls
 
             // 初始化事件处理
             TimelineScrollViewer.ScrollChanged += TimelineScrollViewer_ScrollChanged;
+
+            _scrollDebounceTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(80)
+            };
+            _scrollDebounceTimer.Tick += (s, e) =>
+            {
+                _scrollDebounceTimer.Stop();
+                StartRenderVisibleThumbnails();
+            };
 
             // 设置初始缩放
             ZoomSlider.Value = 1.0;
@@ -142,8 +158,8 @@ namespace VideoCutTool.WPF.Views.Controls
                 // 生成时间标尺
                 GenerateTimeRuler();
 
-                // 生成缩略图
-                await GenerateThumbnails();
+                // 生成缩略图（仅可视区域）
+                StartRenderVisibleThumbnails();
 
                 // 生成音频波形
                 await GenerateAudioWaveform();
@@ -387,6 +403,126 @@ namespace VideoCutTool.WPF.Views.Controls
             }
 
             _logger.LogInformation($"缩略图生成完成，共{thumbnailCount}个有效缩略图");
+        }
+
+        private void StartRenderVisibleThumbnails()
+        {
+            try
+            {
+                _thumbnailCts?.Cancel();
+                _thumbnailCts = new CancellationTokenSource();
+                _ = RenderVisibleThumbnailsAsync(_thumbnailCts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "启动可视区域缩略图渲染失败");
+            }
+        }
+
+        private async Task RenderVisibleThumbnailsAsync(CancellationToken cancellationToken)
+        {
+            if (!_viewModel.IsTimelineViewModelValid())
+            {
+                _logger.LogWarning("虚拟化缩略图时CurrentVideo为null");
+                return;
+            }
+
+            var pixelsPerSecond = _viewModel.PixelsPerSecond;
+            var duration = _viewModel.CurrentVideo.Duration.TotalSeconds;
+            var durationX = duration * pixelsPerSecond;
+            var thumbnailWidth = SettingViewModel.THUMBNAIL_WIDTH;
+            var thumbnailTimeInterval = _viewModel.ThumbnailTimeInterval;
+
+            var offset = TimelineScrollViewer.HorizontalOffset;
+            var viewportWidth = TimelineScrollViewer.ViewportWidth;
+            var buffer = viewportWidth; // 预留一屏缓冲
+
+            var startX = Math.Max(0, offset - buffer);
+            var endX = Math.Min(durationX, offset + viewportWidth + buffer);
+
+            if (endX <= startX || viewportWidth <= 0)
+            {
+                return;
+            }
+
+            var startIndex = (int)Math.Floor(startX / thumbnailWidth);
+            var endIndex = (int)Math.Ceiling(endX / thumbnailWidth);
+
+            if (_lastRenderedRange.startIndex == startIndex && _lastRenderedRange.endIndex == endIndex)
+            {
+                // 范围未变化，跳过
+                return;
+            }
+
+            _lastRenderedRange = (startIndex, endIndex);
+
+            VideoTrackCanvas.Children.Clear();
+            _thumbnails.Clear();
+
+            var thumbHeight = (SettingViewModel.THUMBNAIL_WIDTH / _viewModel.CurrentVideo.Width) * _viewModel.CurrentVideo.Height;
+
+            for (int i = startIndex; i < endIndex; i++)
+            {
+                if (cancellationToken.IsCancellationRequested) return;
+
+                var currentX = i * thumbnailWidth;
+                var currentTime = i * thumbnailTimeInterval;
+                if (currentTime >= duration) break;
+
+                var thumbnailEndX = currentX + thumbnailWidth;
+                double actualWidth = thumbnailWidth;
+                if (thumbnailEndX > durationX)
+                {
+                    actualWidth = Math.Max(0, durationX - currentX);
+                    if (actualWidth <= 0) break;
+                }
+
+                string? thumbnailPath = null;
+                try
+                {
+                    thumbnailPath = await _viewModel.GetThumbnailPathAsync(currentTime);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"获取缩略图失败: {currentTime:F1}s");
+                }
+
+                if (cancellationToken.IsCancellationRequested) return;
+
+                FrameworkElement element;
+                if (!string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath))
+                {
+                    element = new Image
+                    {
+                        Source = new BitmapImage(new Uri(thumbnailPath)),
+                        Width = actualWidth,
+                        Height = thumbHeight,
+                        Stretch = Stretch.UniformToFill
+                    };
+                }
+                else
+                {
+                    element = new Border
+                    {
+                        Background = Brushes.Gray,
+                        Width = actualWidth,
+                        Height = thumbHeight,
+                        Child = new TextBlock
+                        {
+                            Text = $"{currentTime:F1}s",
+                            Foreground = Brushes.White,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            FontSize = 8
+                        }
+                    };
+                }
+
+                Canvas.SetLeft(element, currentX);
+                Canvas.SetTop(element, 2);
+                VideoTrackCanvas.Children.Add(element);
+                if (element is Image img) _thumbnails.Add(img);
+            }
         }
 
         private async Task GenerateAudioWaveform()
@@ -781,6 +917,10 @@ namespace VideoCutTool.WPF.Views.Controls
                 var endTime = TimeSpan.FromSeconds((e.HorizontalOffset + TimelineScrollViewer.ViewportWidth) / pixelsPerSecond);
 
                 _logger.LogDebug($"当前显示时间范围: {startTime:mm\\:ss} - {endTime:mm\\:ss}");
+
+                // 防抖触发缩略图虚拟化渲染
+                _scrollDebounceTimer?.Stop();
+                _scrollDebounceTimer?.Start();
             }
         }
 
