@@ -147,7 +147,7 @@ namespace VideoCutTool.Infrastructure.Services
         
         public async Task<bool> ExportSegmentAsync(string inputPath, string outputPath, TimeSpan startTime, TimeSpan duration, ExportSettings settings, IProgress<int>? progress = null)
         {
-            // 构建FFmpeg参数
+            // 兼容保留：外部exe实现。新默认实现为 VideoServiceDll
             var args = BuildExportArgs(inputPath, outputPath, startTime, duration, settings);
             var result = await ExecuteFFmpegCommandAsync(_ffmpegPath, args, progress);
             return result.Success;
