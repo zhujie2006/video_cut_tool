@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -64,7 +64,8 @@ namespace VideoCutTool.WPF
             services.AddSingleton(configuration);
 
             // Register services
-            services.AddSingleton<IVideoService, VideoService>();
+            // 切换到基于 FFmpeg.AutoGen 的 DLL 实现，避免调用外部 ffmpeg.exe
+            services.AddSingleton<IVideoService, VideoServiceDll>();
             services.AddSingleton<IFileDialogService, FileDialogService>();
             services.AddSingleton<IProjectService, ProjectService>();
 
